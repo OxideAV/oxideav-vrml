@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.1](https://github.com/OxideAV/oxideav-vrml/compare/v0.0.0...v0.0.1) - 2026-10-04
+
+### Fixed
+
+- compile when mesh3d/registry is enabled by another crate but ours is off
+
+### Other
+
+- EXTERNPROTO instantiation through a resolver
+- decode + syntax_roundtrip harnesses, hostile-input tests, two fuzz fixes
+- VRML97 <-> Scene3D decoder and encoder
+- VRML97 lexer, typed parser, writer, PROTO expansion + generic AST
+
 ### Added
 
 - Crate scaffold.
