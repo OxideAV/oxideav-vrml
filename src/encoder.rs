@@ -994,8 +994,12 @@ impl<'s> Enc<'s> {
                     }
                 }
             }
-            #[cfg(feature = "registry")]
-            ImageData::Embedded(_) => None,
+            // `ImageData::Embedded` exists only when *mesh3d's* `registry`
+            // feature is on, which can be enabled by another crate in the
+            // build independently of ours — so match it with a wildcard
+            // rather than a `cfg` on our own feature.
+            #[allow(unreachable_patterns)]
+            _ => None,
         };
         if let Some(n) = &mut node {
             if tex.sampler.wrap_s == WrapMode::ClampToEdge {
