@@ -1,0 +1,21 @@
+name: Fuzz
+
+# Daily fuzz run for the cargo-fuzz harnesses under fuzz/. The shared
+# workflow auto-discovers the targets from fuzz/fuzz_targets/*.rs and
+# splits the 30-minute total budget evenly across them. Current
+# targets: decode (arbitrary bytes through parse → PROTO expansion →
+# Scene3D conversion, then encode → re-decode of every scene that
+# converts) and syntax_roundtrip (generic VRML97 / X3D ClassicVRML
+# parser + writer fixed point, bounded PROTO expansion).
+
+on:
+  schedule:
+    - cron: "17 5 * * *"   # daily 05:17 UTC, jittered off the hour
+  workflow_dispatch:
+
+jobs:
+  fuzz:
+    uses: OxideAV/.github/.github/workflows/crate-fuzz.yml@master
+    with:
+      time_budget_seconds: 1800
+    secrets: inherit

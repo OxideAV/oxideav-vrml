@@ -150,18 +150,25 @@ fn split_header(src: &str, require: bool) -> Result<(Header, &str)> {
     }
     let end = src.find(['\n', '\r']).unwrap_or(src.len());
     let line = &src[1..end];
-    let mut words = line.split([' ', '\t']).filter(|w| !w.is_empty());
-    let format = words.next().unwrap_or("").to_owned();
-    let version = words.next().unwrap_or("").to_owned();
-    let encoding = words.next().unwrap_or("").to_owned();
-    if require && (format.is_empty() || version.is_empty() || encoding.is_empty()) {
+    // Split off the first three whitespace-separated words; everything
+    // after the third one is the comment.
+    let mut words = Vec::with_capacity(3);
+    let mut rest = line;
+    for _ in 0..3 {
+        let trimmed = rest.trim_start_matches([' ', '\t']);
+        let len = trimmed.find([' ', '\t']).unwrap_or(trimmed.len());
+        if len == 0 {
+            break;
+        }
+        words.push(&trimmed[..len]);
+        rest = &trimmed[len..];
+    }
+    let word = |i: usize| words.get(i).copied().unwrap_or("").to_owned();
+    let (format, version, encoding) = (word(0), word(1), word(2));
+    if require && words.len() < 3 {
         return Err(Error::invalid(format!("malformed header line `#{line}`")));
     }
-    // Comment = everything after the encoding word.
-    let comment = match line.find(encoding.as_str()) {
-        Some(pos) if !encoding.is_empty() => line[pos + encoding.len()..].trim().to_owned(),
-        _ => String::new(),
-    };
+    let comment = rest.trim().to_owned();
     let header = Header {
         format,
         version,

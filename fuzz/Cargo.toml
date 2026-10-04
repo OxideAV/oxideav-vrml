@@ -1,0 +1,33 @@
+[package]
+name = "oxideav-vrml-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.oxideav-vrml]
+path = ".."
+default-features = false
+
+[[bin]]
+name = "decode"
+path = "fuzz_targets/decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "syntax_roundtrip"
+path = "fuzz_targets/syntax_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+# The fuzz crate is its own workspace root (it sits inside the
+# umbrella tree but is not a member of it).
+[workspace]

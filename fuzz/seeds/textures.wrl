@@ -1,0 +1,35 @@
+#VRML V2.0 utf8
+Shape {
+  appearance Appearance {
+    texture ImageTexture { url [ "brick.png" "http://example.com/brick.png" ] repeatS FALSE }
+    textureTransform TextureTransform { scale 2 2 translation 0.5 0 }
+  }
+  geometry Box { }
+}
+Transform {
+  translation 3 0 0
+  children Shape {
+    appearance Appearance {
+      material Material { diffuseColor 0.2 0.2 0.2 }
+      texture DEF CHECKER PixelTexture { image 2 2 3 0xFF0000 0x00FF00 0x0000FF 0xFFFFFF }
+    }
+    geometry IndexedFaceSet {
+      coord Coordinate { point [ 0 0 0, 1 0 0, 1 1 0, 0 1 0 ] }
+      coordIndex [ 0 1 2 3 -1 ]
+    }
+  }
+}
+Transform {
+  translation 6 0 0
+  children Shape {
+    appearance Appearance {
+      texture PixelTexture { image 1 1 1 0x80 }
+      material Material { diffuseColor 1 0 0 }
+    }
+    geometry IndexedFaceSet {
+      coord Coordinate { point [ 0 0 0, 2 0 0, 2 1 0, 0 1 0 ] }
+      coordIndex [ 0 1 2 3 -1 ]
+      texCoord TextureCoordinate { point [ 0 0, 1 0, 1 1, 0 1 ] }
+    }
+  }
+}

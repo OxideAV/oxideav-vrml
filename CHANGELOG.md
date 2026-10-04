@@ -38,3 +38,12 @@ All notable changes to this project will be documented in this file.
   PointSet, Viewpoint, lights, PixelTexture / `data:` URI textures and
   TimeSensor + interpolator + ROUTE animations; `register()` for the
   mesh3d registry (`vrml`, `wrz`).
+- cargo-fuzz harness (`fuzz/`: `decode`, `syntax_roundtrip`) with the
+  fixtures as seeds and the daily org fuzz workflow; configurable
+  per-geometry generation cap (`ConvertOptions::max_generated`).
+
+### Fixed
+
+- Header comment split after the third header word (fuzz finding).
+- Inferred float fields of unknown nodes keep a float spelling on
+  output so they re-infer with the same type (fuzz finding).

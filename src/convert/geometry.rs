@@ -14,7 +14,7 @@ use super::math::{add, axis_angle_to_quat, cross, dot, normalize, quat_rotate, s
 use super::mesh::{pack_indices, Built, PolyMesh};
 use crate::ast::{Document, Node};
 
-/// Cap on generated vertices / corners per geometry node.
+/// Default cap on generated vertices / corners per geometry node.
 pub(crate) const MAX_GENERATED: usize = 16 * 1024 * 1024;
 
 /// Tessellation density for the analytic primitives.
@@ -76,6 +76,8 @@ pub(crate) struct GeomCtx {
     pub need_uvs: bool,
     pub tex_transform: Option<TexTransform>,
     pub tess: Tessellation,
+    /// Cap on generated faces / vertices / indices per geometry node.
+    pub max_generated: usize,
 }
 
 impl GeomCtx {
@@ -106,7 +108,7 @@ pub(crate) fn convert(doc: &Document, n: &Node, ctx: &GeomCtx) -> Option<GeomOut
         "IndexedFaceSet" => indexed_face_set(doc, n, ctx),
         "ElevationGrid" => elevation_grid(doc, n, ctx),
         "Extrusion" => extrusion(n, ctx),
-        "IndexedLineSet" => indexed_line_set(doc, n),
+        "IndexedLineSet" => indexed_line_set(doc, n, ctx.max_generated),
         "PointSet" => point_set(doc, n),
         "Box" => Some(tri(box_prim(n, ctx), true)),
         "Sphere" => Some(tri(sphere(n, ctx), true)),
@@ -290,7 +292,7 @@ fn indexed_face_set(doc: &Document, n: &Node, ctx: &GeomCtx) -> Option<GeomOut> 
             }
         }
         pm.faces.push(face);
-        if pm.faces.len() > MAX_GENERATED {
+        if pm.faces.len() > ctx.max_generated {
             return None;
         }
     }
@@ -368,7 +370,7 @@ fn elevation_grid(doc: &Document, n: &Node, ctx: &GeomCtx) -> Option<GeomOut> {
         return None;
     }
     let count = xd.checked_mul(zd)?;
-    if count > height.len() || count > MAX_GENERATED {
+    if count > height.len() || count > ctx.max_generated {
         return None;
     }
     let coords: Vec<V3> = (0..count)
@@ -567,7 +569,7 @@ fn extrusion(n: &Node, ctx: &GeomCtx) -> Option<GeomOut> {
     let scales = fl::opt_v2s(n, "scale").unwrap_or_else(|| vec![[1.0, 1.0]]);
     let orients = fl::opt_v4s(n, "orientation").unwrap_or_else(|| vec![[0.0, 0.0, 1.0, 0.0]]);
     let (ns, m) = (spine.len(), cs.len());
-    if ns < 2 || m < 2 || ns.checked_mul(m)? > MAX_GENERATED {
+    if ns < 2 || m < 2 || ns.checked_mul(m)? > ctx.max_generated {
         return None;
     }
     let frames = extrusion_frames(&spine);
@@ -663,7 +665,7 @@ fn extrusion(n: &Node, ctx: &GeomCtx) -> Option<GeomOut> {
     })
 }
 
-fn indexed_line_set(doc: &Document, n: &Node) -> Option<GeomOut> {
+fn indexed_line_set(doc: &Document, n: &Node, max_generated: usize) -> Option<GeomOut> {
     let coords = coords_of(doc, n)?;
     let colors = colors_of(doc, n);
     let stream = colors.as_deref().map(|values| Stream {
@@ -702,7 +704,7 @@ fn indexed_line_set(doc: &Document, n: &Node) -> Option<GeomOut> {
             }
             prev = Some(idx);
         }
-        if indices.len() > MAX_GENERATED {
+        if indices.len() > max_generated {
             return None;
         }
     }
@@ -971,6 +973,7 @@ mod tests {
             need_uvs,
             tex_transform: None,
             tess: Tessellation::default(),
+            max_generated: MAX_GENERATED,
         }
     }
 

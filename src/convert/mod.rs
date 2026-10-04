@@ -70,6 +70,9 @@ pub struct ConvertOptions {
     pub all_lod_levels: bool,
     /// Maximum scene nodes created (bounds `USE` instancing blow-up).
     pub max_scene_nodes: usize,
+    /// Maximum faces / vertices / indices generated per geometry node
+    /// (bounds Extrusion `spine × crossSection` and similar products).
+    pub max_generated: usize,
     /// Resolver for `Inline` URLs; `None` keeps them as references.
     pub resolver: Option<Arc<dyn UrlResolver>>,
     /// Maximum `Inline` nesting followed through the resolver.
@@ -83,6 +86,7 @@ impl fmt::Debug for ConvertOptions {
             .field("all_switch_choices", &self.all_switch_choices)
             .field("all_lod_levels", &self.all_lod_levels)
             .field("max_scene_nodes", &self.max_scene_nodes)
+            .field("max_generated", &self.max_generated)
             .field("resolver", &self.resolver.is_some())
             .field("max_inline_depth", &self.max_inline_depth)
             .finish()
@@ -96,6 +100,7 @@ impl Default for ConvertOptions {
             all_switch_choices: false,
             all_lod_levels: false,
             max_scene_nodes: 1_000_000,
+            max_generated: geometry::MAX_GENERATED,
             resolver: None,
             max_inline_depth: 8,
         }
@@ -564,6 +569,7 @@ impl<'d> Converter<'d> {
             need_uvs: texture.is_some(),
             tex_transform: tt,
             tess: self.opts.tessellation,
+            max_generated: self.opts.max_generated,
         };
         let Some(out) = geometry::convert(self.doc, geom, &ctx) else {
             if !matches!(
@@ -1065,7 +1071,11 @@ impl<'d> Converter<'d> {
                 continue;
             }
             let prim = &mut mesh.primitives[pi];
-            if !prim.targets.is_empty() || src.iter().any(|&s| s as usize >= per_key) {
+            let budget = n_keys.saturating_mul(prim.positions.len());
+            if !prim.targets.is_empty()
+                || budget > self.opts.max_generated
+                || src.iter().any(|&s| s as usize >= per_key)
+            {
                 continue;
             }
             for k in 0..n_keys {

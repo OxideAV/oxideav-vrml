@@ -87,6 +87,14 @@ pub fn format_f64(v: f64) -> String {
     format_shortest(format!("{v}"))
 }
 
+fn floatify(s: String, force: bool) -> String {
+    if force && !s.contains(['.', 'e', 'E']) {
+        s + ".0"
+    } else {
+        s
+    }
+}
+
 /// Switch very long plain decimal renderings (`1e30` → 31 digits) to
 /// exponent form while keeping the shortest round-trip digits.
 fn format_shortest(plain: String) -> String {
@@ -394,7 +402,7 @@ impl<'d> Writer<'d> {
                 FieldBinding::Is(t) => {
                     let _ = write!(self.out, "IS {t}");
                 }
-                FieldBinding::Value(v) => self.value(v, level + 1),
+                FieldBinding::Value(v) => self.value_ext(v, level + 1, f.inferred),
             }
             self.out.push('\n');
         }
@@ -443,6 +451,13 @@ impl<'d> Writer<'d> {
     }
 
     fn value(&mut self, v: &FieldValue, level: usize) {
+        self.value_ext(v, level, false);
+    }
+
+    /// `force_float`: write float values with a decimal point even when
+    /// integral, so a field whose type was *inferred* (unknown node)
+    /// re-infers as a float type rather than an int32 type.
+    fn value_ext(&mut self, v: &FieldValue, level: usize, force_float: bool) {
         let multi = v.ty.is_multi();
         let comps = v.ty.element().1.max(1);
         match &v.data {
@@ -503,11 +518,17 @@ impl<'d> Writer<'d> {
                 }
             }
             FieldData::Floats(f) => {
-                let items: Vec<String> = f.iter().map(|x| format_f32(*x)).collect();
+                let items: Vec<String> = f
+                    .iter()
+                    .map(|x| floatify(format_f32(*x), force_float))
+                    .collect();
                 self.scalars(&items, comps, multi, level);
             }
             FieldData::Doubles(d) => {
-                let items: Vec<String> = d.iter().map(|x| format_f64(*x)).collect();
+                let items: Vec<String> = d
+                    .iter()
+                    .map(|x| floatify(format_f64(*x), force_float))
+                    .collect();
                 self.scalars(&items, comps, multi, level);
             }
         }
