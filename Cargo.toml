@@ -12,4 +12,31 @@ readme = "README.md"
 keywords = ["vrml", "wrl", "3d", "mesh", "iso-14772"]
 categories = ["multimedia", "rendering::data-formats", "parser-implementations"]
 
+# Fixture scenes and the fuzz crate stay out of the published package.
+exclude = ["/tests/fixtures", "/fuzz"]
+
+[features]
+default = ["registry"]
+
+# `registry` wires up `oxideav-core` and exposes the `register()` helper
+# that plugs the `.wrl` / `.wrz` decoder + encoder into a
+# `Mesh3DRegistry`. Drop it (`default-features = false`) for a
+# free-standing build: the VRML lexer / parser / AST / writer, the
+# Scene3D conversion and the `VrmlDecoder` / `VrmlEncoder` types all
+# remain available, with no `oxideav-core` in the dependency tree.
+registry = ["dep:oxideav-core", "oxideav-mesh3d/registry"]
+
 [dependencies]
+# Optional under the `registry` feature so consumers can use the parser
+# and converter without pulling the framework dependency tree.
+oxideav-core = { version = "0.1", optional = true }
+# Always-on: the typed Scene3D model + Decoder/Encoder traits.
+oxideav-mesh3d = { version = "0.0", default-features = false }
+# `extras: HashMap<String, serde_json::Value>` carries the VRML-only
+# side-channel (Phong material originals, light attenuation, routes,
+# NavigationInfo / WorldInfo / Background, unknown nodes …).
+serde_json = "1"
+# Gzip-compressed `.wrz` / `.wrl.gz` inflate (RFC 1952) plus the zlib
+# stream inside PixelTexture <-> PNG bridging. Same provider + pin as
+# oxideav-svg (`.svgz`) and oxideav-fbx (zlib arrays).
+compcol = { version = "0.6", default-features = false, features = ["gzip", "zlib"] }
