@@ -496,3 +496,27 @@ fn rejects_other_headers() {
         "caf\u{e9}"
     );
 }
+
+struct LibResolver;
+
+impl UrlResolver for LibResolver {
+    fn resolve(&self, url: &str) -> Option<Vec<u8>> {
+        (url == "lib.wrl").then(|| fixture("lib.wrl"))
+    }
+}
+
+#[test]
+fn externproto_through_resolver() {
+    let s = VrmlDecoder::new()
+        .with_resolver(Arc::new(LibResolver))
+        .decode_scene(&fixture("protos.wrl"))
+        .unwrap();
+    assert!(s.validate().is_ok());
+    assert!(!s.nodes.iter().any(|n| n.extras.contains_key("vrml:node")));
+    // Remote { weight 2 } → Sphere radius 2.
+    let big = s.meshes.iter().any(|m| {
+        m.bounding_box()
+            .is_some_and(|b| (b.max[1] - 2.0).abs() < 1e-5 && (b.min[1] + 2.0).abs() < 1e-5)
+    });
+    assert!(big);
+}

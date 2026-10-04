@@ -1,0 +1,6 @@
+#VRML V2.0 utf8
+# EXTERNPROTO implementation library for protos.wrl
+PROTO Other [ ] { Group { } }
+PROTO Remote [ exposedField SFFloat weight 1 ] {
+  Transform { children Shape { geometry Sphere { radius IS weight } } }
+}

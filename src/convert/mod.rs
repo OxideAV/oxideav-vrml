@@ -813,8 +813,12 @@ impl<'d> Converter<'d> {
             let Some(bytes) = resolver.resolve(url) else {
                 continue;
             };
-            let doc = crate::decoder::read_document(&bytes)?;
-            let doc = crate::syntax::expand_protos(&doc)?;
+            let doc = crate::decoder::load_expanded(
+                &bytes,
+                &crate::syntax::ParseLimits::default(),
+                &crate::syntax::ExpandLimits::default(),
+                Some(&resolver),
+            )?;
             let sub = document_to_scene_at_depth(&doc, self.opts, self.inline_depth + 1)?;
             if self.scene.nodes.len() + sub.nodes.len() > self.opts.max_scene_nodes {
                 return Err(Error::limit("Inline expansion exceeds the scene node cap"));

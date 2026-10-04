@@ -41,6 +41,9 @@ All notable changes to this project will be documented in this file.
 - cargo-fuzz harness (`fuzz/`: `decode`, `syntax_roundtrip`) with the
   fixtures as seeds and the daily org fuzz workflow; configurable
   per-geometry generation cap (`ConvertOptions::max_generated`).
+- `expand_protos_resolving`: EXTERNPROTO instantiation from fetched
+  implementation files (`#name` fragment or first PROTO, §4.9.3); the
+  decoder uses its `UrlResolver` for it.
 
 ### Fixed
 

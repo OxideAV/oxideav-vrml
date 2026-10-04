@@ -15,7 +15,7 @@ use oxideav_mesh3d::{Mesh3DDecoder, Scene3D};
 use crate::ast::Document;
 use crate::convert::{document_to_scene, ConvertOptions, UrlResolver};
 use crate::error::{Error, Result};
-use crate::syntax::{expand_protos_with, parse_with, ExpandLimits, ParseLimits, ParseOptions};
+use crate::syntax::{expand_protos_resolving, parse_with, ExpandLimits, ParseLimits, ParseOptions};
 
 /// Cap on the inflated size of a gzip-compressed file
 /// (decompression-bomb guard).
@@ -75,6 +75,22 @@ pub fn read_document_with(bytes: &[u8], limits: &ParseLimits) -> Result<Document
     let doc = parse_with(&text, &opts)?;
     check_header(&doc)?;
     Ok(doc)
+}
+
+/// Read + PROTO-expand, instantiating EXTERNPROTOs through `resolver`
+/// when one is given.
+pub(crate) fn load_expanded(
+    bytes: &[u8],
+    parse_limits: &ParseLimits,
+    expand_limits: &ExpandLimits,
+    resolver: Option<&Arc<dyn UrlResolver>>,
+) -> Result<Document> {
+    let doc = read_document_with(bytes, parse_limits)?;
+    let mut fetch = |url: &str| -> Option<Document> {
+        let bytes = resolver?.resolve(url)?;
+        read_document_with(&bytes, parse_limits).ok()
+    };
+    expand_protos_resolving(&doc, expand_limits, &mut fetch)
 }
 
 fn check_header(doc: &Document) -> Result<()> {
@@ -140,8 +156,12 @@ impl VrmlDecoder {
 
     /// Decode with the crate-local error type.
     pub fn decode_scene(&self, bytes: &[u8]) -> Result<Scene3D> {
-        let doc = read_document_with(bytes, &self.parse_limits)?;
-        let doc = expand_protos_with(&doc, &self.expand_limits)?;
+        let doc = load_expanded(
+            bytes,
+            &self.parse_limits,
+            &self.expand_limits,
+            self.options.resolver.as_ref(),
+        )?;
         document_to_scene(&doc, &self.options)
     }
 }

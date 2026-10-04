@@ -20,7 +20,7 @@ The crate has two layers:
 | Lexer / parser | All 20 VRML97 field types (SF/MF Bool, Color, Float, Image, Int32, Node, Rotation, String, Time, Vec2f, Vec3f), MF values with or without brackets, comments, `DEF` / `USE` (shared arena ids), `PROTO` / `EXTERNPROTO` with `IS`, `ROUTE` (resolved to node ids), Script body interface declarations, unknown node types (fields typed by shape inference), UTF-8 with Latin-1 fallback, gzip (`.wrz`) input |
 | X3D ClassicVRML dialect | access keywords `inputOnly` … `inputOutput`, X3D field types (MFBool, SFDouble, SFVec3d, SFColorRGBA, SFMatrix4f, …), `PROFILE` / `COMPONENT` / `META` / `UNIT` / `IMPORT` / `EXPORT` |
 | Writer | canonical indented text, automatic `DEF` / `USE` for shared nodes, shortest round-trip floats; `parse(write(doc)) == doc` |
-| PROTO expansion | instance values / interface defaults substituted through `IS`, nested prototypes, extra body roots + body routes kept, `IS` table for forwarding routes to instance interfaces; `EXTERNPROTO` instances kept (unexpanded) |
+| PROTO expansion | instance values / interface defaults substituted through `IS`, nested prototypes, extra body roots + body routes kept, `IS` table for forwarding routes to instance interfaces; `EXTERNPROTO` instances expanded when a resolver can fetch the implementation file (`#name` fragment or first PROTO, §4.9.3), otherwise kept as placeholders |
 | Grouping | Transform (TRS, or matrix when `center` / `scaleOrientation` are used), Group, Anchor, Billboard, Collision, Switch (active or all choices), LOD (finest or all levels), Inline (through a `UrlResolver`, otherwise kept as a reference) |
 | Geometry | IndexedFaceSet (convex / concave ear clipping, ccw, solid → double-sided, creaseAngle normal generation splitting vertices across creases, per-vertex / per-face colours and normals, indexed or implicit texture coordinates, default bounding-box texture mapping), IndexedLineSet, PointSet, ElevationGrid, Extrusion (spine-aligned cross-section planes per §6.18, scale / orientation, caps, texture coordinates), Box / Sphere / Cone / Cylinder tessellated per spec dimensions and texture layout |
 | Appearance | Material (Phong → metallic-roughness approximation, originals in `vrml:material` extras), lighting-off → unlit, Color-node / RGB-texture diffuse replacement (Table 4.6), ImageTexture (URI or `data:` URI), PixelTexture (→ in-memory PNG), MovieTexture (URI), TextureTransform (baked into UVs), repeatS / repeatT |
@@ -28,7 +28,7 @@ The crate has two layers:
 | Animation | TimeSensor + PositionInterpolator / OrientationInterpolator → translation / scale / rotation channels; CoordinateInterpolator → morph targets with one-hot weight channels; repeated keys → step interpolation; routes forwarded through PROTO `IS` interfaces. Other interpolators / sensors / scripts kept in `vrml:behaviour`, all routes in `vrml:routes` |
 | Environment | Background, Fog, NavigationInfo, WorldInfo preserved as scene extras (and re-emitted by the encoder) |
 | Encoder | Transform / Group hierarchy, shared meshes and appearances via `DEF` / `USE`, IndexedFaceSet with explicit normals / UVs / colours, IndexedLineSet, PointSet, Viewpoint, lights, PixelTexture / `data:` URI embedding, animations as TimeSensor + interpolators + ROUTEs (including morph targets as CoordinateInterpolator); optional gzip output |
-| Not yet | Text / FontStyle geometry (recorded in `vrml:unsupportedGeometry`), Sound / AudioClip, sensors and Script execution, EXTERNPROTO resolution, ColorInterpolator / NormalInterpolator / ScalarInterpolator animation mapping |
+| Not yet | Text / FontStyle geometry (recorded in `vrml:unsupportedGeometry`), Sound / AudioClip, sensors and Script execution, ColorInterpolator / NormalInterpolator / ScalarInterpolator animation mapping |
 
 Hostile input is bounded everywhere (`ParseLimits`, `ExpandLimits`,
 scene-node and generated-geometry caps, gzip inflate cap); the crate
@@ -58,7 +58,7 @@ println!("{}", write_document(&flat));
 # Ok::<(), oxideav_vrml::Error>(())
 ```
 
-`Inline` URLs are followed when a resolver is supplied:
+`Inline` and `EXTERNPROTO` URLs are followed when a resolver is supplied:
 
 ```rust
 use std::sync::Arc;

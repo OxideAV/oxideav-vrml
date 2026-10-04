@@ -21,7 +21,7 @@ pub mod parser;
 pub mod writer;
 
 pub use catalog::{vrml97_node, FieldSchema, NodeCatalog, NodeSchema, Vrml97Catalog};
-pub use expand::{expand_protos, expand_protos_with, ExpandLimits};
+pub use expand::{expand_protos, expand_protos_resolving, expand_protos_with, ExpandLimits};
 pub use lexer::{Lexer, Token, TokenKind};
 pub use parser::{parse, parse_field_value, parse_with, Dialect, ParseLimits, ParseOptions};
 pub use writer::{write_document, write_document_with, WriteOptions};

@@ -14,7 +14,9 @@
 //! gets its own copy of the body, per §4.8.2 "each prototype instance
 //! can be considered to be a complete copy of the prototype").
 //! `EXTERNPROTO` instances are kept as-is (their implementation lives
-//! in another file).
+//! in another file) unless [`expand_protos_resolving`] is given a
+//! resolver that can fetch the implementation file (§4.9.3: the PROTO
+//! named by the URL's `#name` fragment, else the file's first PROTO).
 //!
 //! The output contains no `PROTO` statements. Expansion is bounded by
 //! [`ExpandLimits`] — nested prototypes can otherwise blow up
@@ -53,8 +55,70 @@ pub fn expand_protos(doc: &Document) -> Result<Document> {
 
 /// Expand every PROTO instance.
 pub fn expand_protos_with(doc: &Document, limits: &ExpandLimits) -> Result<Document> {
+    expand_protos_resolving(doc, limits, &mut |_| None)
+}
+
+/// Maximum distinct implementation files fetched for EXTERNPROTOs.
+const MAX_EXTERN_FILES: usize = 64;
+
+/// Expand every PROTO instance, also instantiating `EXTERNPROTO`
+/// instances whose implementation `resolve` can supply.
+///
+/// `resolve` receives each EXTERNPROTO URL without its `#name`
+/// fragment and returns the parsed implementation file. Prototypes
+/// inside fetched files may use other PROTOs of the same file;
+/// EXTERNPROTOs *inside* a fetched file are not followed further.
+pub fn expand_protos_resolving(
+    doc: &Document,
+    limits: &ExpandLimits,
+    resolve: &mut dyn FnMut(&str) -> Option<Document>,
+) -> Result<Document> {
+    // Fetch implementations up front so they outlive the expander.
+    let mut files: Vec<(String, Option<Document>)> = Vec::new();
+    let mut picks: Vec<(ExternProtoId, usize, ProtoId)> = Vec::new();
+    for (i, decl) in doc.extern_protos.iter().enumerate() {
+        for url in &decl.urls {
+            let (base, frag) = match url.split_once('#') {
+                Some((b, f)) => (b, Some(f)),
+                None => (url.as_str(), None),
+            };
+            let idx = match files.iter().position(|(u, _)| u == base) {
+                Some(i) => i,
+                None if files.len() < MAX_EXTERN_FILES => {
+                    files.push((base.to_owned(), resolve(base)));
+                    files.len() - 1
+                }
+                None => continue,
+            };
+            let Some(file) = &files[idx].1 else { continue };
+            let top: Vec<ProtoId> = file
+                .statements
+                .iter()
+                .filter_map(|s| match s {
+                    Statement::Proto(p) => Some(*p),
+                    _ => None,
+                })
+                .collect();
+            let pick = match frag {
+                Some(name) => top
+                    .iter()
+                    .copied()
+                    .find(|p| file.proto(*p).is_some_and(|d| d.name == name)),
+                None => top.first().copied(),
+            };
+            if let Some(pid) = pick {
+                picks.push((ExternProtoId(i as u32), idx, pid));
+                break;
+            }
+        }
+    }
+    let externals: HashMap<ExternProtoId, (&Document, ProtoId)> = picks
+        .into_iter()
+        .filter_map(|(eid, idx, pid)| files[idx].1.as_ref().map(|d| (eid, (d, pid))))
+        .collect();
     let mut ex = Expander {
-        src: doc,
+        root: doc,
+        externals,
         out: Document {
             header: doc.header.clone(),
             ..Document::default()
@@ -63,7 +127,7 @@ pub fn expand_protos_with(doc: &Document, limits: &ExpandLimits) -> Result<Docum
         depth: 0,
         extern_map: HashMap::new(),
     };
-    let mut env = Env::default();
+    let mut env = Env::new(doc);
     let stmts = ex.statements(&doc.statements, &mut env)?;
     ex.out.statements = stmts;
     Ok(ex.out)
@@ -71,8 +135,9 @@ pub fn expand_protos_with(doc: &Document, limits: &ExpandLimits) -> Result<Docum
 
 /// Copy environment of one name scope (the file, or one prototype
 /// instance body).
-#[derive(Default)]
-struct Env {
+struct Env<'a> {
+    /// Document the nodes of this scope live in.
+    src: &'a Document,
     /// Source id → expanded id.
     map: HashMap<NodeId, NodeId>,
     /// Interface values of the instance being expanded (already copied
@@ -82,16 +147,29 @@ struct Env {
     is_map: Vec<(String, NodeId, String)>,
 }
 
+impl<'a> Env<'a> {
+    fn new(src: &'a Document) -> Self {
+        Self {
+            src,
+            map: HashMap::new(),
+            is_values: None,
+            is_map: Vec::new(),
+        }
+    }
+}
+
 struct Expander<'a> {
-    src: &'a Document,
+    root: &'a Document,
+    externals: HashMap<ExternProtoId, (&'a Document, ProtoId)>,
     out: Document,
     limits: ExpandLimits,
     depth: usize,
-    extern_map: HashMap<ExternProtoId, ExternProtoId>,
+    /// (source document address, id) → output id.
+    extern_map: HashMap<(usize, ExternProtoId), ExternProtoId>,
 }
 
-impl Expander<'_> {
-    fn statements(&mut self, stmts: &[Statement], env: &mut Env) -> Result<Vec<Statement>> {
+impl<'a> Expander<'a> {
+    fn statements(&mut self, stmts: &[Statement], env: &mut Env<'a>) -> Result<Vec<Statement>> {
         let mut out = Vec::new();
         for s in stmts {
             match s {
@@ -107,11 +185,12 @@ impl Expander<'_> {
         Ok(out)
     }
 
-    fn extern_proto(&mut self, eid: ExternProtoId, env: &mut Env) -> Result<ExternProtoId> {
-        if let Some(n) = self.extern_map.get(&eid) {
+    fn extern_proto(&mut self, eid: ExternProtoId, env: &mut Env<'a>) -> Result<ExternProtoId> {
+        let key = (env.src as *const Document as usize, eid);
+        if let Some(n) = self.extern_map.get(&key) {
             return Ok(*n);
         }
-        let Some(decl) = self.src.extern_proto(eid) else {
+        let Some(decl) = env.src.extern_proto(eid) else {
             return Err(Error::invalid("dangling EXTERNPROTO id"));
         };
         let mut decl = decl.clone();
@@ -121,7 +200,7 @@ impl Expander<'_> {
             }
         }
         let new = self.out.add_extern_proto(decl);
-        self.extern_map.insert(eid, new);
+        self.extern_map.insert(key, new);
         Ok(new)
     }
 
@@ -146,7 +225,7 @@ impl Expander<'_> {
         Ok(())
     }
 
-    fn value(&mut self, v: &FieldValue, env: &mut Env) -> Result<FieldValue> {
+    fn value(&mut self, v: &FieldValue, env: &mut Env<'a>) -> Result<FieldValue> {
         match &v.data {
             FieldData::Nodes(ids) => {
                 let mut out = Vec::with_capacity(ids.len());
@@ -163,24 +242,29 @@ impl Expander<'_> {
     }
 
     /// Copy (or instantiate) source node `id` into the output arena.
-    fn copy(&mut self, id: NodeId, env: &mut Env) -> Result<NodeId> {
+    fn copy(&mut self, id: NodeId, env: &mut Env<'a>) -> Result<NodeId> {
         if let Some(n) = env.map.get(&id) {
             return Ok(*n);
         }
-        let src = self.src;
+        let src = env.src;
         let Some(node) = src.node(id) else {
             return Err(Error::invalid("dangling node id"));
         };
         self.enter()?;
+        let in_root = std::ptr::eq(src, self.root);
         let r = match node.origin {
-            NodeOrigin::Proto(pid) => self.instantiate(id, node, pid, env),
+            NodeOrigin::Proto(pid) => self.instantiate(id, node, src, pid, env),
+            NodeOrigin::ExternProto(eid) if in_root && self.externals.contains_key(&eid) => {
+                let (file, pid) = self.externals[&eid];
+                self.instantiate(id, node, file, pid, env)
+            }
             _ => self.copy_plain(id, node, env),
         };
         self.depth -= 1;
         r
     }
 
-    fn copy_plain(&mut self, id: NodeId, node: &Node, env: &mut Env) -> Result<NodeId> {
+    fn copy_plain(&mut self, id: NodeId, node: &Node, env: &mut Env<'a>) -> Result<NodeId> {
         let new = self.reserve()?;
         env.map.insert(id, new);
         let mut out = Node::new(node.type_name.clone());
@@ -247,15 +331,17 @@ impl Expander<'_> {
         Ok(new)
     }
 
+    /// Instantiate PROTO `pid` of document `proto_doc` for instance
+    /// node `node` (living in `env.src`).
     fn instantiate(
         &mut self,
         id: NodeId,
         node: &Node,
+        proto_doc: &'a Document,
         pid: ProtoId,
-        env: &mut Env,
+        env: &mut Env<'a>,
     ) -> Result<NodeId> {
-        let src = self.src;
-        let Some(proto) = src.proto(pid) else {
+        let Some(proto) = proto_doc.proto(pid) else {
             return Err(Error::invalid("dangling PROTO id"));
         };
         // 1. Interface values: instance value (copied in the *outer*
@@ -271,7 +357,7 @@ impl Expander<'_> {
                     Some(def) => {
                         // Defaults live in the declaring scope: copy them
                         // with a fresh map per instance.
-                        let mut denv = Env::default();
+                        let mut denv = Env::new(proto_doc);
                         Some(self.value(def, &mut denv)?)
                     }
                     None => None,
@@ -283,9 +369,8 @@ impl Expander<'_> {
         }
         // 2. Copy the body in a fresh scope.
         let mut body_env = Env {
-            map: HashMap::new(),
             is_values: Some(values),
-            is_map: Vec::new(),
+            ..Env::new(proto_doc)
         };
         let mut root: Option<NodeId> = None;
         let mut extra_roots = Vec::new();
@@ -347,7 +432,7 @@ impl Expander<'_> {
     }
 }
 
-fn remap_route(r: &Route, env: &Env) -> Route {
+fn remap_route(r: &Route, env: &Env<'_>) -> Route {
     Route {
         from_id: r.from_id.and_then(|i| env.map.get(&i).copied()),
         to_id: r.to_id.and_then(|i| env.map.get(&i).copied()),
@@ -426,6 +511,34 @@ mod tests {
             t.field("translation").unwrap().as_vec3f(),
             Some([1.0, 2.0, 3.0])
         );
+    }
+
+    #[test]
+    fn externproto_resolved_through_callback() {
+        let main = parse(
+            "#VRML V2.0 utf8
+             EXTERNPROTO Gold [ exposedField SFFloat shine ] [ \"missing.wrl#Gold\" \"lib.wrl#Gold\" ]
+             Shape { appearance Appearance { material Gold { shine 0.9 } } }",
+        )
+        .unwrap();
+        let lib = "#VRML V2.0 utf8
+             PROTO Silver [] { Material { diffuseColor 0.7 0.7 0.7 } }
+             PROTO Gold [ exposedField SFFloat shine 0.5 ] {
+               Material { diffuseColor 1 0.8 0 shininess IS shine } }";
+        let mut asked = Vec::new();
+        let e = expand_protos_resolving(&main, &ExpandLimits::default(), &mut |url| {
+            asked.push(url.to_owned());
+            (url == "lib.wrl").then(|| parse(lib).unwrap())
+        })
+        .unwrap();
+        assert_eq!(asked, ["missing.wrl", "lib.wrl"]);
+        let mat = e
+            .nodes
+            .iter()
+            .find(|n| n.type_name == "Material")
+            .expect("EXTERNPROTO expanded to its Material body");
+        assert_eq!(mat.field("shininess").unwrap().as_float(), Some(0.9));
+        assert_eq!(mat.instance.as_ref().unwrap().proto_name, "Gold");
     }
 
     #[test]
