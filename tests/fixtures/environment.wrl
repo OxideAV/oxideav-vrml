@@ -1,0 +1,9 @@
+#VRML V2.0 utf8
+WorldInfo { title "Environment" info [ "author: test" ] }
+NavigationInfo { avatarSize [ 0.5 1.6 0.75 ] visibilityLimit 500 type [ "EXAMINE" "ANY" ] headlight FALSE }
+Background { skyColor [ 0 0 1, 1 1 1 ] skyAngle [ 1.57 ] }
+Fog { color 0.5 0.5 0.5 visibilityRange 100 }
+DEF Entry Viewpoint { position 0 1.6 10 orientation 0 1 0 0.5 fieldOfView 0.9 description "Entrance" }
+DEF Sun DirectionalLight { direction 0 -1 0 intensity 0.8 color 1 1 0.9 }
+DEF Lamp PointLight { location 1 2 3 radius 20 attenuation 1 0.1 0 intensity 0.5 }
+DEF Spot SpotLight { location 0 5 0 direction 0 -1 0 beamWidth 0.3 cutOffAngle 0.6 on FALSE }

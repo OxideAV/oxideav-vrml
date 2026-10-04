@@ -1,0 +1,33 @@
+#VRML V2.0 utf8
+Transform {
+  children [
+    Shape {
+      appearance Appearance { material Material { } }
+      geometry ElevationGrid {
+        xDimension 4 zDimension 3 xSpacing 0.5 zSpacing 2
+        height [ 0 0.1 0.2 0.3, 0 0.5 0.5 0, 0.3 0.2 0.1 0 ]
+        creaseAngle 1.0
+        colorPerVertex FALSE
+        color Color { color [ 1 0 0, 0 1 0, 0 0 1, 1 1 0, 1 0 1, 0 1 1 ] }
+      }
+    }
+    # Surface of revolution: circular cross-section along a straight spine.
+    Shape {
+      geometry Extrusion {
+        crossSection [ 1 0, 0.7071 -0.7071, 0 -1, -0.7071 -0.7071, -1 0,
+                       -0.7071 0.7071, 0 1, 0.7071 0.7071, 1 0 ]
+        spine [ 0 0 0, 0 1 0, 0 2 0 ]
+        scale [ 1 1, 0.5 0.5, 1 1 ]
+        creaseAngle 1.6
+      }
+    }
+    # Bent spine with twist.
+    Shape {
+      geometry Extrusion {
+        spine [ 0 0 0, 1 1 0, 2 1 0, 3 0 0 ]
+        orientation [ 0 1 0 0, 0 1 0 0.3, 0 1 0 0.6, 0 1 0 0.9 ]
+        beginCap FALSE
+      }
+    }
+  ]
+}

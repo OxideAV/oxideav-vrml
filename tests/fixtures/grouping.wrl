@@ -1,0 +1,17 @@
+#VRML V2.0 utf8
+Anchor { url "other.wrl#View" description "go" children Shape { geometry Box { } } }
+Billboard { axisOfRotation 0 1 0 children Shape { geometry Sphere { } } }
+Collision { collide FALSE children Shape { geometry Cone { } } proxy Box { } }
+Switch { whichChoice 1 choice [ Shape { geometry Box { } } Shape { geometry Sphere { } } ] }
+LOD { range [ 10 ] level [ Shape { geometry Sphere { } } Shape { geometry Box { } } ] }
+Inline { url "child.wrl" }
+Transform {
+  center 1 0 0
+  rotation 0 0 1 1.5707963
+  scaleOrientation 0 0 1 0.5
+  scale 2 1 1
+  children Shape { geometry Box { } }
+}
+FancyNode { someField 1 2 3 children [ Shape { geometry Box { } } ] note "unknown" }
+DEF S Script { url "javascript: function f(v) {}" eventIn SFFloat f field SFNode target NULL }
+Shape { geometry Text { string "hello" } }

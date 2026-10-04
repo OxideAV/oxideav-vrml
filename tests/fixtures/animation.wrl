@@ -1,0 +1,36 @@
+#VRML V2.0 utf8
+DEF MOVER Transform {
+  children DEF SPINNER Transform {
+    children Shape {
+      geometry IndexedFaceSet {
+        coord DEF PTS Coordinate { point [ 0 0 0, 1 0 0, 0 1 0 ] }
+        coordIndex [ 0 1 2 -1 ]
+      }
+    }
+  }
+}
+DEF CLOCK TimeSensor { cycleInterval 4 loop TRUE }
+DEF PATH PositionInterpolator { key [ 0 0.5 1 ] keyValue [ 0 0 0, 0 2 0, 0 0 0 ] }
+DEF TURN OrientationInterpolator { key [ 0 1 ] keyValue [ 0 1 0 0, 0 1 0 3.14159 ] }
+DEF MORPH CoordinateInterpolator { key [ 0 1 ] keyValue [ 0 0 0, 1 0 0, 0 1 0,  0 0 0, 2 0 0, 0 2 0 ] }
+ROUTE CLOCK.fraction_changed TO PATH.set_fraction
+ROUTE PATH.value_changed TO MOVER.set_translation
+ROUTE CLOCK.fraction_changed TO TURN.set_fraction
+ROUTE TURN.value_changed TO SPINNER.rotation
+ROUTE CLOCK.fraction_changed TO MORPH.set_fraction
+ROUTE MORPH.value_changed TO PTS.set_point
+DEF FADE ScalarInterpolator { key [ 0 1 ] keyValue [ 0 1 ] }
+ROUTE CLOCK.fraction_changed TO FADE.set_fraction
+
+# Behaviour wired entirely inside a PROTO, plus an IS-forwarded route.
+PROTO Bouncer [ exposedField SFVec3f where 0 0 0 eventIn SFFloat set_t ] {
+  DEF B Transform { translation IS where children Shape { geometry Sphere { radius 0.2 } } }
+  DEF T TimeSensor { cycleInterval 2 loop TRUE }
+  DEF P PositionInterpolator { key [ 0 1 ] keyValue [ 0 0 0, 0 1 0 ] }
+  ROUTE T.fraction_changed TO P.set_fraction
+  ROUTE P.value_changed TO B.set_translation
+}
+DEF BOUNCE Bouncer { }
+DEF OUTER PositionInterpolator { key [ 0 1 ] keyValue [ 5 0 0, 6 0 0 ] }
+ROUTE CLOCK.fraction_changed TO OUTER.set_fraction
+ROUTE OUTER.value_changed TO BOUNCE.set_where
