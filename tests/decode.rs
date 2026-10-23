@@ -126,12 +126,13 @@ fn indexed_face_set_hints() {
     let [a, b, c] = tri.map(|i| p.positions[i as usize]);
     let gz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
     assert!(gz > 0.0);
-    assert!(p
-        .normals
-        .as_ref()
-        .unwrap()
-        .iter()
-        .all(|n| *n == [0.0, 0.0, 1.0]));
+    assert!(
+        p.normals
+            .as_ref()
+            .unwrap()
+            .iter()
+            .all(|n| *n == [0.0, 0.0, 1.0])
+    );
     assert_eq!(p.colors[0].len(), p.positions.len());
 }
 

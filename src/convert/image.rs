@@ -122,7 +122,14 @@ pub(crate) fn png_to_image(bytes: &[u8]) -> Option<Image> {
                 let h = u32::from_be_bytes(data[4..8].try_into().ok()?);
                 ihdr = Some((w, h, data[8], data[9], data[12]));
             }
-            b"PLTE" => palette = data.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect(),
+            b"PLTE" => {
+                palette = data
+                    .as_chunks::<3>()
+                    .0
+                    .iter()
+                    .map(|c| [c[0], c[1], c[2]])
+                    .collect()
+            }
             b"tRNS" => trns = data.to_vec(),
             b"IDAT" => idat.extend_from_slice(data),
             b"IEND" => break,
@@ -286,12 +293,14 @@ fn percent_decode(s: &str) -> Vec<u8> {
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while i < b.len() {
-        if b[i] == b'%' && i + 2 < b.len() && s.is_char_boundary(i + 3) {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
-                out.push(v);
-                i += 3;
-                continue;
-            }
+        if b[i] == b'%'
+            && i + 2 < b.len()
+            && s.is_char_boundary(i + 3)
+            && let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16)
+        {
+            out.push(v);
+            i += 3;
+            continue;
         }
         out.push(b[i]);
         i += 1;

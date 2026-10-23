@@ -1,8 +1,8 @@
 [package]
 name = "oxideav-vrml"
 version = "0.0.1"
-edition = "2021"
-rust-version = "1.80"
+edition = "2024"
+rust-version = "1.95"
 license = "MIT"
 authors = ["Mark Karpeles"]
 description = "Pure-Rust VRML97 (ISO/IEC 14772) reader/writer — implements oxideav-mesh3d's Decoder/Encoder traits"

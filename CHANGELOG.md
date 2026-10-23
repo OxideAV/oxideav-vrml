@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- edition 2024, MSRV 1.95
+
 ## [0.0.1](https://github.com/OxideAV/oxideav-vrml/compare/v0.0.0...v0.0.1) - 2026-10-04
 
 ### Fixed

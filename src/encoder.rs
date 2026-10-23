@@ -42,7 +42,7 @@ use crate::convert::math::{quat_rotate, quat_to_axis_angle};
 use crate::convert::roughness_to_shininess;
 use crate::error::{Error, Result};
 use crate::syntax::catalog::vrml97_node;
-use crate::syntax::{write_document_with, WriteOptions};
+use crate::syntax::{WriteOptions, write_document_with};
 
 /// How embedded (non-URI) textures are written.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -304,55 +304,54 @@ impl<'s> Enc<'s> {
         let bare = sn.mesh.is_none() && sn.children.is_empty();
 
         // Directional lights: hoisted to the root, world direction.
-        if let Some(lid) = sn.light {
-            if let Some(Light::Directional { color, intensity }) =
+        if let Some(lid) = sn.light
+            && let Some(Light::Directional { color, intensity }) =
                 self.scene.lights.get(lid.0 as usize)
-            {
-                let dir = match world.get(i as usize).copied().flatten() {
-                    Some(m) => [-m[0][2], -m[1][2], -m[2][2]],
-                    None => quat_rotate(r, [0.0, 0.0, -1.0]),
-                };
-                let mut n = Node::new("DirectionalLight");
-                n.def_name = name.clone().filter(|_| bare);
-                self.light_common(&mut n, sn, *color, *intensity);
-                n.set_field("direction", FieldValue::sf_vec3f(normalize3(dir)));
-                let id = self.add(n);
-                self.directional.push(id);
-                if bare && sn.camera.is_none() {
-                    visiting.pop();
-                    return Ok(None);
-                }
+        {
+            let dir = match world.get(i as usize).copied().flatten() {
+                Some(m) => [-m[0][2], -m[1][2], -m[2][2]],
+                None => quat_rotate(r, [0.0, 0.0, -1.0]),
+            };
+            let mut n = Node::new("DirectionalLight");
+            n.def_name = name.clone().filter(|_| bare);
+            self.light_common(&mut n, sn, *color, *intensity);
+            n.set_field("direction", FieldValue::sf_vec3f(normalize3(dir)));
+            let id = self.add(n);
+            self.directional.push(id);
+            if bare && sn.camera.is_none() {
+                visiting.pop();
+                return Ok(None);
             }
         }
 
         // Camera-only node → Viewpoint (position / orientation carry
         // the node TRS).
-        if let (Some(cid), true, None) = (sn.camera, bare, sn.light) {
-            if let Some(cam) = self.scene.cameras.get(cid.0 as usize) {
-                let mut n = Node::new("Viewpoint");
-                n.def_name = name.clone();
-                n.set_field("position", FieldValue::sf_vec3f(t));
-                n.set_field(
-                    "orientation",
-                    FieldValue::sf_rotation(quat_to_axis_angle(r)),
-                );
-                n.set_field("fieldOfView", FieldValue::sf_float(camera_fov(cam)));
-                if let Some(desc) = sn
-                    .extras
-                    .get("vrml:viewpoint")
-                    .and_then(|v| v.get("description"))
-                    .and_then(Value::as_str)
-                    .filter(|d| !d.is_empty())
-                    .or(sn.name.as_deref())
-                {
-                    n.set_field("description", FieldValue::sf_string(desc));
-                }
-                let id = self.add(n);
-                self.emitted.insert(i, id);
-                self.emitted_kind.insert(i, "Viewpoint");
-                visiting.pop();
-                return Ok(Some(id));
+        if let (Some(cid), true, None) = (sn.camera, bare, sn.light)
+            && let Some(cam) = self.scene.cameras.get(cid.0 as usize)
+        {
+            let mut n = Node::new("Viewpoint");
+            n.def_name = name.clone();
+            n.set_field("position", FieldValue::sf_vec3f(t));
+            n.set_field(
+                "orientation",
+                FieldValue::sf_rotation(quat_to_axis_angle(r)),
+            );
+            n.set_field("fieldOfView", FieldValue::sf_float(camera_fov(cam)));
+            if let Some(desc) = sn
+                .extras
+                .get("vrml:viewpoint")
+                .and_then(|v| v.get("description"))
+                .and_then(Value::as_str)
+                .filter(|d| !d.is_empty())
+                .or(sn.name.as_deref())
+            {
+                n.set_field("description", FieldValue::sf_string(desc));
             }
+            let id = self.add(n);
+            self.emitted.insert(i, id);
+            self.emitted_kind.insert(i, "Viewpoint");
+            visiting.pop();
+            return Ok(Some(id));
         }
 
         // Point / spot light-only node → light with location/direction.
@@ -404,13 +403,13 @@ impl<'s> Enc<'s> {
         if let Some(mid) = sn.mesh {
             kids.extend(self.mesh_shapes(mid.0, sn.weights.as_slice())?);
         }
-        if let Some(cid) = sn.camera {
-            if let Some(cam) = self.scene.cameras.get(cid.0 as usize) {
-                let mut v = Node::new("Viewpoint");
-                v.set_field("position", FieldValue::sf_vec3f([0.0; 3]));
-                v.set_field("fieldOfView", FieldValue::sf_float(camera_fov(cam)));
-                kids.push(self.add(v));
-            }
+        if let Some(cid) = sn.camera
+            && let Some(cam) = self.scene.cameras.get(cid.0 as usize)
+        {
+            let mut v = Node::new("Viewpoint");
+            v.set_field("position", FieldValue::sf_vec3f([0.0; 3]));
+            v.set_field("fieldOfView", FieldValue::sf_float(camera_fov(cam)));
+            kids.push(self.add(v));
         }
         if let Some(lid) = sn.light {
             match self.scene.lights.get(lid.0 as usize).copied() {
@@ -522,18 +521,19 @@ impl<'s> Enc<'s> {
                     n.set_field("collide", FieldValue::sf_bool(false));
                 }
                 wrapper = Some(n);
-            } else if let Some(inl) = ex.get("vrml:inline") {
-                if ex.get("vrml:inlineResolved").is_none() && kids.is_empty() {
-                    let mut n = Node::new("Inline");
-                    n.set_field("url", FieldValue::mf_string(json_strings(inl.get("url"))));
-                    wrapper = Some(n);
-                }
+            } else if let Some(inl) = ex.get("vrml:inline")
+                && ex.get("vrml:inlineResolved").is_none()
+                && kids.is_empty()
+            {
+                let mut n = Node::new("Inline");
+                n.set_field("url", FieldValue::mf_string(json_strings(inl.get("url"))));
+                wrapper = Some(n);
             }
         }
-        if let Some(w) = &mut wrapper {
-            if !matches!(w.type_name.as_str(), "Switch" | "LOD" | "Inline") {
-                w.set_field("children", FieldValue::mf_node(std::mem::take(&mut kids)));
-            }
+        if let Some(w) = &mut wrapper
+            && !matches!(w.type_name.as_str(), "Switch" | "LOD" | "Inline")
+        {
+            w.set_field("children", FieldValue::mf_node(std::mem::take(&mut kids)));
         }
 
         let animated = self.node_names.contains_key(&i)
@@ -636,10 +636,10 @@ impl<'s> Enc<'s> {
         {
             n.set_field("ambientIntensity", FieldValue::sf_float(a as f32));
         }
-        if n.type_name != "DirectionalLight" {
-            if let Some(att) = json_vec3(info.and_then(|v| v.get("attenuation"))) {
-                n.set_field("attenuation", FieldValue::sf_vec3f(att));
-            }
+        if n.type_name != "DirectionalLight"
+            && let Some(att) = json_vec3(info.and_then(|v| v.get("attenuation")))
+        {
+            n.set_field("attenuation", FieldValue::sf_vec3f(att));
         }
     }
 
@@ -789,14 +789,14 @@ impl<'s> Enc<'s> {
                 let mat = prim
                     .material
                     .and_then(|m| self.scene.materials.get(m.0 as usize));
-                if let Some(uvs) = self.uv_channel(prim, mat) {
-                    if uvs.len() == positions.len() {
-                        let st: Vec<[f32; 2]> = uvs.iter().map(|uv| [uv[0], 1.0 - uv[1]]).collect();
-                        let mut tc = Node::new("TextureCoordinate");
-                        tc.set_field("point", FieldValue::mf_vec2f(&st));
-                        let tid = self.add(tc);
-                        ifs.set_field("texCoord", FieldValue::sf_node(Some(tid)));
-                    }
+                if let Some(uvs) = self.uv_channel(prim, mat)
+                    && uvs.len() == positions.len()
+                {
+                    let st: Vec<[f32; 2]> = uvs.iter().map(|uv| [uv[0], 1.0 - uv[1]]).collect();
+                    let mut tc = Node::new("TextureCoordinate");
+                    tc.set_field("point", FieldValue::mf_vec2f(&st));
+                    let tid = self.add(tc);
+                    ifs.set_field("texCoord", FieldValue::sf_node(Some(tid)));
                 }
                 if let Some(c) = color_node {
                     let cid = self.add(c);
@@ -813,7 +813,7 @@ impl<'s> Enc<'s> {
                 let valid: Vec<i32> = seq.iter().filter(|&&i| i < n).map(|&i| i as i32).collect();
                 match prim.topology {
                     Topology::Lines => {
-                        for p in valid.chunks_exact(2) {
+                        for p in valid.as_chunks::<2>().0 {
                             index.extend([p[0], p[1], -1]);
                         }
                     }

@@ -26,7 +26,7 @@ pub mod encoder;
 pub mod error;
 pub mod syntax;
 
-pub use convert::{document_to_scene, ConvertOptions, Tessellation, UrlResolver};
+pub use convert::{ConvertOptions, Tessellation, UrlResolver, document_to_scene};
 pub use decoder::VrmlDecoder;
 pub use encoder::{EncodeOptions, TextureEmbedding, VrmlEncoder};
 pub use error::{Error, Result};

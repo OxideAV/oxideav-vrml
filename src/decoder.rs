@@ -13,9 +13,9 @@ use std::sync::Arc;
 use oxideav_mesh3d::{Mesh3DDecoder, Scene3D};
 
 use crate::ast::Document;
-use crate::convert::{document_to_scene, ConvertOptions, UrlResolver};
+use crate::convert::{ConvertOptions, UrlResolver, document_to_scene};
 use crate::error::{Error, Result};
-use crate::syntax::{expand_protos_resolving, parse_with, ExpandLimits, ParseLimits, ParseOptions};
+use crate::syntax::{ExpandLimits, ParseLimits, ParseOptions, expand_protos_resolving, parse_with};
 
 /// Cap on the inflated size of a gzip-compressed file
 /// (decompression-bomb guard).

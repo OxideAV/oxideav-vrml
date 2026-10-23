@@ -37,14 +37,14 @@ use oxideav_mesh3d::{
     Node as SceneNode, NodeId as SceneNodeId, Primitive, Sampler, Scene3D, Texture, TextureId,
     TextureRef, Transform, WrapMode,
 };
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::ast::{Document, FieldBinding, FieldData, FieldValue, Node, NodeId, Route};
 use crate::error::{Error, Result};
 use fields as fl;
 pub use geometry::Tessellation;
 use geometry::{GeomCtx, TexTransform};
-use math::{axis_angle_to_quat, quat_between, V3};
+use math::{V3, axis_angle_to_quat, quat_between};
 
 /// Fetches the bytes behind a URL (Inline children, textures, …).
 ///
@@ -364,10 +364,10 @@ impl<'d> Converter<'d> {
                     for (k, c) in choice.iter().enumerate() {
                         self.attach_child(sid, *c, k as i32 != which)?;
                     }
-                } else if which >= 0 {
-                    if let Some(c) = choice.get(which as usize) {
-                        self.attach_child(sid, *c, false)?;
-                    }
+                } else if which >= 0
+                    && let Some(c) = choice.get(which as usize)
+                {
+                    self.attach_child(sid, *c, false)?;
                 }
                 return Ok(Some(sid));
             }
@@ -1061,7 +1061,7 @@ impl<'d> Converter<'d> {
         if kept.len() != n_keys {
             return out; // non-finite / decreasing keys: leave unmapped
         }
-        if n_keys == 0 || n_keys > MAX_KEYS || values.len() % n_keys != 0 {
+        if n_keys == 0 || n_keys > MAX_KEYS || !values.len().is_multiple_of(n_keys) {
             return out;
         }
         let per_key = values.len() / n_keys;

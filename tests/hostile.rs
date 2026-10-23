@@ -1,6 +1,6 @@
 //! Hostile-input hardening and fuzz regressions.
 
-use oxideav_vrml::syntax::{parse_with, write_document, ParseOptions};
+use oxideav_vrml::syntax::{ParseOptions, parse_with, write_document};
 use oxideav_vrml::{ConvertOptions, Error, VrmlDecoder};
 
 fn roundtrip_fixed_point(text: &str) {
@@ -80,9 +80,11 @@ fn extrusion_product_is_capped() {
 #[test]
 fn gzip_bomb_and_garbage() {
     // Truncated / corrupt gzip.
-    assert!(VrmlDecoder::new()
-        .decode_scene(&[0x1F, 0x8B, 8, 0, 0, 0, 0, 0, 0, 3, 1, 2, 3])
-        .is_err());
+    assert!(
+        VrmlDecoder::new()
+            .decode_scene(&[0x1F, 0x8B, 8, 0, 0, 0, 0, 0, 0, 3, 1, 2, 3])
+            .is_err()
+    );
     // Cycles through USE inside the node's own subtree terminate.
     let s = b"#VRML V2.0 utf8\nDEF G Group { children [ Shape { geometry Box {} } USE G ] }";
     let scene = VrmlDecoder::new().decode_scene(s).unwrap();

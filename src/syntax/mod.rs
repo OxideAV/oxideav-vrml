@@ -20,8 +20,8 @@ pub mod lexer;
 pub mod parser;
 pub mod writer;
 
-pub use catalog::{vrml97_node, FieldSchema, NodeCatalog, NodeSchema, Vrml97Catalog};
-pub use expand::{expand_protos, expand_protos_resolving, expand_protos_with, ExpandLimits};
+pub use catalog::{FieldSchema, NodeCatalog, NodeSchema, Vrml97Catalog, vrml97_node};
+pub use expand::{ExpandLimits, expand_protos, expand_protos_resolving, expand_protos_with};
 pub use lexer::{Lexer, Token, TokenKind};
-pub use parser::{parse, parse_field_value, parse_with, Dialect, ParseLimits, ParseOptions};
-pub use writer::{write_document, write_document_with, WriteOptions};
+pub use parser::{Dialect, ParseLimits, ParseOptions, parse, parse_field_value, parse_with};
+pub use writer::{WriteOptions, write_document, write_document_with};

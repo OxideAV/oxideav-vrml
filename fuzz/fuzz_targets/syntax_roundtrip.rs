@@ -6,8 +6,8 @@
 
 use libfuzzer_sys::fuzz_target;
 use oxideav_vrml::syntax::{
-    expand_protos_with, parse_with, write_document_with, Dialect, ExpandLimits, ParseLimits,
-    ParseOptions, WriteOptions,
+    Dialect, ExpandLimits, ParseLimits, ParseOptions, WriteOptions, expand_protos_with, parse_with,
+    write_document_with,
 };
 
 fuzz_target!(|data: &[u8]| {

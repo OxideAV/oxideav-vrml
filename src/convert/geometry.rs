@@ -10,8 +10,8 @@ use std::f32::consts::{PI, TAU};
 use oxideav_mesh3d::{Primitive, Topology};
 
 use super::fields as fl;
-use super::math::{add, axis_angle_to_quat, cross, dot, normalize, quat_rotate, scale, sub, V3};
-use super::mesh::{pack_indices, Built, PolyMesh};
+use super::math::{V3, add, axis_angle_to_quat, cross, dot, normalize, quat_rotate, scale, sub};
+use super::mesh::{Built, PolyMesh, pack_indices};
 use crate::ast::{Document, Node};
 
 /// Default cap on generated vertices / corners per geometry node.
@@ -208,7 +208,7 @@ fn split_runs(index: &[i32]) -> Vec<(usize, &[i32])> {
 
 /// Default IFS texture mapping (§6.23): S along the longest bounding-box
 /// dimension, T along the second, both scaled by the longest size.
-fn default_ifs_st(coords: &[V3]) -> impl Fn(V3) -> [f32; 2] {
+fn default_ifs_st(coords: &[V3]) -> impl Fn(V3) -> [f32; 2] + use<> {
     let mut min = [f32::INFINITY; 3];
     let mut max = [f32::NEG_INFINITY; 3];
     for p in coords {
@@ -540,10 +540,10 @@ fn extrusion_frames(spine: &[V3]) -> Vec<[V3; 3]> {
     let mut frames = Vec::with_capacity(n);
     for i in 0..n {
         let mut z = zs[i].or(prev).or(first).unwrap_or([0.0, 0.0, 1.0]);
-        if let Some(p) = prev {
-            if dot(z, p) < 0.0 {
-                z = scale(z, -1.0);
-            }
+        if let Some(p) = prev
+            && dot(z, p) < 0.0
+        {
+            z = scale(z, -1.0);
         }
         prev = Some(z);
         let y = ys[i].unwrap_or([0.0, 1.0, 0.0]);
@@ -795,11 +795,7 @@ impl<'c> Builder<'c> {
 
 /// Positive, finite dimension or the spec default.
 fn dim(v: f32, d: f32) -> f32 {
-    if v.is_finite() && v > 0.0 {
-        v
-    } else {
-        d
-    }
+    if v.is_finite() && v > 0.0 { v } else { d }
 }
 
 fn box_prim(n: &Node, ctx: &GeomCtx) -> Primitive {

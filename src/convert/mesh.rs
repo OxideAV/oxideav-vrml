@@ -14,7 +14,7 @@ use std::collections::HashMap;
 
 use oxideav_mesh3d::{Indices, Primitive, Topology};
 
-use super::math::{add, dot, normalize, scale, V3};
+use super::math::{V3, add, dot, normalize, scale};
 
 /// Per-corner attribute streams are aligned with the flattened corner
 /// list (`faces` concatenated).
@@ -83,11 +83,7 @@ impl PolyMesh {
             .iter()
             .map(|f| {
                 let n = newell(self.face_points(f));
-                if self.ccw {
-                    n
-                } else {
-                    scale(n, -1.0)
-                }
+                if self.ccw { n } else { scale(n, -1.0) }
             })
             .collect();
         let corner_normals = match &self.normals {
@@ -224,10 +220,10 @@ impl PolyMesh {
                             if g == fi {
                                 continue;
                             }
-                            if let Some(ug) = unit[g] {
-                                if dot(u, ug) > cos_crease {
-                                    s = add(s, face_n[g]);
-                                }
+                            if let Some(ug) = unit[g]
+                                && dot(u, ug) > cos_crease
+                            {
+                                s = add(s, face_n[g]);
                             }
                         }
                     }
@@ -271,11 +267,7 @@ impl PolyMesh {
             .iter()
             .map(|&i| {
                 let p = self.coords[i as usize];
-                if flip {
-                    [p[v], p[u]]
-                } else {
-                    [p[u], p[v]]
-                }
+                if flip { [p[v], p[u]] } else { [p[u], p[v]] }
             })
             .collect();
         ear_clip(&pts)
@@ -392,9 +384,10 @@ mod tests {
         assert_eq!(smooth.prim.positions.len(), 6);
         let n = smooth.prim.normals.as_ref().unwrap();
         let s = std::f32::consts::FRAC_1_SQRT_2;
-        assert!(n
-            .iter()
-            .any(|v| (v[0] - s).abs() < 1e-5 && (v[1] - s).abs() < 1e-5));
+        assert!(
+            n.iter()
+                .any(|v| (v[0] - s).abs() < 1e-5 && (v[1] - s).abs() < 1e-5)
+        );
     }
 
     #[test]

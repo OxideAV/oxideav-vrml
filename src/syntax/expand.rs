@@ -476,10 +476,11 @@ mod tests {
         assert_eq!(radius(roots[1]), 1.0);
         let inst = e.node(roots[0]).unwrap().instance.as_ref().unwrap();
         assert_eq!(inst.proto_name, "Ball");
-        assert!(inst
-            .is_map
-            .iter()
-            .any(|(n, _, f)| n == "r" && f == "radius"));
+        assert!(
+            inst.is_map
+                .iter()
+                .any(|(n, _, f)| n == "r" && f == "radius")
+        );
     }
 
     #[test]

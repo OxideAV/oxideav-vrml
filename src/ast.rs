@@ -586,7 +586,9 @@ impl FieldValue {
     fn chunks<const N: usize>(&self) -> Option<Vec<[f32; N]>> {
         let v = self.float_list()?;
         Some(
-            v.chunks_exact(N)
+            v.as_chunks::<N>()
+                .0
+                .iter()
                 .map(|c| {
                     let mut out = [0.0; N];
                     out.copy_from_slice(c);

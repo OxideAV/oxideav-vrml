@@ -23,7 +23,7 @@ use crate::ast::{
 use crate::error::{Error, Result};
 use crate::syntax::catalog::{NodeCatalog, Vrml97Catalog};
 use crate::syntax::lexer::{
-    is_float_literal, parse_double, parse_int32, parse_int_wide, unescape, Lexer, Token, TokenKind,
+    Lexer, Token, TokenKind, is_float_literal, parse_double, parse_int_wide, parse_int32, unescape,
 };
 
 /// Grammar dialect.
@@ -603,10 +603,10 @@ impl<'a, 'c> Parser<'a, 'c> {
         // Register the DEF before the body so `USE` inside the body (and
         // ROUTEs in the body) resolve, as §4.6.2 describes.
         let id = self.doc.add_node(Node::new(type_name));
-        if let Some(name) = &def_name {
-            if let Some(scope) = self.scopes.last_mut() {
-                scope.defs.insert(name.clone(), id);
-            }
+        if let Some(name) = &def_name
+            && let Some(scope) = self.scopes.last_mut()
+        {
+            scope.defs.insert(name.clone(), id);
         }
         self.enter()?;
         while self.tok.kind != TokenKind::RBrace {
@@ -920,10 +920,8 @@ impl<'a, 'c> Parser<'a, 'c> {
         if from_current {
             go = visit(&self.tok);
         }
-        if go {
-            if let Some(p) = self.peeked {
-                go = visit(&p);
-            }
+        if go && let Some(p) = self.peeked {
+            go = visit(&p);
         }
         if go {
             let mut lx = self.lx.clone();

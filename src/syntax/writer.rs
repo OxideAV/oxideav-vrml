@@ -106,11 +106,7 @@ fn format_shortest(plain: String) -> String {
         Ok(v) => format!("{v:e}"),
         Err(_) => return plain,
     };
-    if exp.len() < plain.len() {
-        exp
-    } else {
-        plain
-    }
+    if exp.len() < plain.len() { exp } else { plain }
 }
 
 struct Writer<'d> {

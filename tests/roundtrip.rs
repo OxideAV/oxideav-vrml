@@ -413,10 +413,11 @@ fn built_scene_round_trip() {
     let si = b.nodes.iter().position(|n| std::ptr::eq(n, spot)).unwrap();
     let w = world[si].unwrap();
     assert!((-w[1][2] + 1.0).abs() < 1e-5, "spot points down: {w:?}");
-    assert!(b
-        .lights
-        .iter()
-        .any(|l| matches!(l, Light::Directional { intensity, .. } if *intensity == 0.5)));
+    assert!(
+        b.lights
+            .iter()
+            .any(|l| matches!(l, Light::Directional { intensity, .. } if *intensity == 0.5))
+    );
     // Animations.
     assert_eq!(b.animations.len(), 1);
     let anim = &b.animations[0];
