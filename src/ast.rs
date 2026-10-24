@@ -746,8 +746,24 @@ pub struct ProtoInstance {
     pub is_map: Vec<(String, NodeId, String)>,
 }
 
+/// Kind of one element of a node body (Annex A `nodeBodyElement` /
+/// `scriptBodyElement`), used by [`Node::body_order`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum BodyElement {
+    /// A field statement (`fieldId fieldValue` / `fieldId IS fieldId`)
+    /// — the next entry of [`Node::fields`].
+    Field,
+    /// A Script-style interface declaration — the next entry of
+    /// [`Node::interface`].
+    Interface,
+    /// A `ROUTE` / `PROTO` / `EXTERNPROTO` statement — the next entry
+    /// of [`Node::statements`].
+    Statement,
+}
+
 /// One node statement.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct Node {
     /// Node type name (`"Transform"`, a PROTO name, …).
     pub type_name: String,
@@ -761,6 +777,20 @@ pub struct Node {
     /// `ROUTE` / `PROTO` / `EXTERNPROTO` statements that appeared
     /// inside the body.
     pub statements: Vec<Statement>,
+    /// How [`fields`](Self::fields), [`interface`](Self::interface) and
+    /// [`statements`](Self::statements) interleave in the source: one
+    /// entry per body element, in source order. The grammar allows any
+    /// interleaving, and the typed parser is sensitive to it — a
+    /// Script-style declaration types the field statements that follow
+    /// it, and a `PROTO` inside a body types the instantiations that
+    /// follow it (ISO/IEC 14772-1 §4.8.4) — so writers must reproduce
+    /// it for `parse(write(doc))` to be a fixed point. Empty for
+    /// programmatically built nodes; writers then emit declarations,
+    /// fields and statements in that order. Elements beyond the
+    /// recorded order (e.g. fields appended with
+    /// [`set_field`](Self::set_field)) are emitted after it in the same
+    /// default order.
+    pub body_order: Vec<BodyElement>,
     /// Type provenance.
     pub origin: NodeOrigin,
     /// Set on the root node of an expanded prototype instance.
@@ -776,6 +806,7 @@ impl Node {
             fields: Vec::new(),
             interface: Vec::new(),
             statements: Vec::new(),
+            body_order: Vec::new(),
             origin: NodeOrigin::Builtin,
             instance: None,
         }

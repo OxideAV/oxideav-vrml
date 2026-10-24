@@ -1,0 +1,18 @@
+#VRML V2.0 utf8
+# Interleaved Script body: field statements before and after the
+# declarations that type them, a ROUTE in the middle, and a node-body
+# PROTO defined after a same-named unknown node and before an instance.
+DEF S Script {
+  J 2
+  eventIn MFVec2f J
+  J 1 2
+  ROUTE S.J TO S.J
+  field SFInt32 k 3
+  k 7
+  url "javascript: function J() {}"
+}
+Group {
+  children [ P { v [ 1 2, 3 4 ] } ]
+  PROTO P [ field MFVec2f v 0 0 ] { Box { } }
+  addChildren P { v [ 1 2, 3 4 ] }
+}

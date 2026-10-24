@@ -5,7 +5,11 @@
 //! `DEF name …` at their first occurrence in document order and as
 //! `USE name` afterwards; shared nodes without a `DEF` name get a
 //! synthetic one (`_N<index>`), as do nodes referenced by a `ROUTE`
-//! through an id only.
+//! through an id only. Inside a node body, fields, Script-style
+//! interface declarations and nested statements are written in the
+//! order recorded by [`Node::body_order`] (source order for parsed
+//! documents), because the typed parser reads a field according to the
+//! declarations and `PROTO`s that precede it.
 //!
 //! Floats are written with Rust's shortest round-trip representation,
 //! so `parse(write(doc))` reproduces every value bit-for-bit;
@@ -15,8 +19,8 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write as _;
 
 use crate::ast::{
-    Document, FieldBinding, FieldData, FieldType, FieldValue, Image, InterfaceDecl, Node, NodeId,
-    Route, Statement,
+    BodyElement, Document, Field, FieldBinding, FieldData, FieldType, FieldValue, Image,
+    InterfaceDecl, Node, NodeId, Route, Statement,
 };
 use crate::syntax::lexer::escape;
 use crate::syntax::parser::Dialect;
@@ -388,28 +392,67 @@ impl<'d> Writer<'d> {
             return;
         }
         self.out.push('\n');
-        for d in &node.interface {
+        // Follow the recorded source interleaving first: the parser
+        // types a field by the declarations and PROTOs that precede it
+        // in the body, so emitting them in any other order changes how
+        // the output re-parses. Whatever the order does not cover
+        // (programmatically built nodes, appended fields) follows in
+        // the default declarations → fields → statements order.
+        let (mut fi, mut ii, mut si) = (0, 0, 0);
+        for element in &node.body_order {
+            match element {
+                BodyElement::Field => {
+                    if let Some(f) = node.fields.get(fi) {
+                        fi += 1;
+                        self.field(f, level);
+                    }
+                }
+                BodyElement::Interface => {
+                    if let Some(d) = node.interface.get(ii) {
+                        ii += 1;
+                        self.interface_decl(d, level + 1);
+                    }
+                }
+                BodyElement::Statement => {
+                    if let Some(s) = node.statements.get(si) {
+                        si += 1;
+                        self.statement(s, level + 1);
+                    }
+                }
+            }
+        }
+        for d in &node.interface[ii.min(node.interface.len())..] {
             self.interface_decl(d, level + 1);
         }
-        for f in &node.fields {
-            self.pad(level + 1);
-            let _ = write!(self.out, "{} ", f.name);
-            match &f.binding {
-                FieldBinding::Is(t) => {
-                    let _ = write!(self.out, "IS {t}");
-                }
-                FieldBinding::Value(v) => self.value_ext(v, level + 1, f.inferred),
-            }
-            self.out.push('\n');
+        for f in &node.fields[fi.min(node.fields.len())..] {
+            self.field(f, level);
         }
-        self.statements(&node.statements, level + 1);
+        self.statements(&node.statements[si.min(node.statements.len())..], level + 1);
         self.pad(level);
         self.out.push('}');
+    }
+
+    /// One field statement of a node body at `level + 1`.
+    fn field(&mut self, f: &Field, level: usize) {
+        self.pad(level + 1);
+        let _ = write!(self.out, "{} ", f.name);
+        match &f.binding {
+            FieldBinding::Is(t) => {
+                let _ = write!(self.out, "IS {t}");
+            }
+            FieldBinding::Value(v) => self.value_ext(v, level + 1, f.inferred),
+        }
+        self.out.push('\n');
     }
 
     fn strings(&mut self, v: &[String], force_brackets: bool, level: usize) {
         if v.len() == 1 && !force_brackets {
             let _ = write!(self.out, "\"{}\"", escape(&v[0]));
+            return;
+        }
+        if v.is_empty() && !force_brackets {
+            // Single-valued SFString with no data: the empty string.
+            self.out.push_str("\"\"");
             return;
         }
         if v.is_empty() {
@@ -478,7 +521,11 @@ impl<'d> Writer<'d> {
                 self.pad(level);
                 self.out.push(']');
             }
-            FieldData::Strings(s) => self.strings(s, multi && s.len() != 1, level),
+            FieldData::Strings(s) => {
+                let one = Self::exactly(s, 1, "");
+                let s: &[String] = if multi { s } else { &one };
+                self.strings(s, multi && s.len() != 1, level);
+            }
             FieldData::Images(imgs) => {
                 if !multi {
                     match imgs.first() {
@@ -498,10 +545,13 @@ impl<'d> Writer<'d> {
                 self.out.push_str(" ]");
             }
             FieldData::Bools(b) => {
-                let items: Vec<String> = b
+                let mut items: Vec<String> = b
                     .iter()
                     .map(|x| if *x { "TRUE" } else { "FALSE" }.to_owned())
                     .collect();
+                if !multi && items.is_empty() {
+                    items.push("FALSE".to_owned());
+                }
                 self.scalars(&items, 1, multi, level);
             }
             FieldData::Int32s(i) => {
@@ -530,15 +580,32 @@ impl<'d> Writer<'d> {
         }
     }
 
+    /// `items` for a single-valued field, padded with `fill` or
+    /// truncated to exactly `comps` entries so the output always parses
+    /// (a programmatically built value may carry the wrong count).
+    fn exactly<'s>(
+        items: &'s [String],
+        comps: usize,
+        fill: &str,
+    ) -> std::borrow::Cow<'s, [String]> {
+        if items.len() == comps {
+            return std::borrow::Cow::Borrowed(items);
+        }
+        let mut v: Vec<String> = items.iter().take(comps).cloned().collect();
+        v.resize(comps, fill.to_owned());
+        std::borrow::Cow::Owned(v)
+    }
+
     fn scalars(&mut self, items: &[String], comps: usize, multi: bool, level: usize) {
-        let elements = items.len() / comps;
         let joined = |chunk: &[String]| chunk.join(" ");
-        if !multi || elements == 1 {
-            if items.is_empty() && multi {
-                self.out.push_str("[]");
-            } else {
-                self.out.push_str(&joined(items));
-            }
+        if !multi {
+            let items = Self::exactly(items, comps, "0");
+            self.out.push_str(&joined(&items));
+            return;
+        }
+        let elements = items.len() / comps;
+        if elements == 1 {
+            self.out.push_str(&joined(items));
             return;
         }
         if elements == 0 {

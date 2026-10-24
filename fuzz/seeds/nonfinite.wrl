@@ -1,0 +1,5 @@
+#VRML V2.0 utf8
+Fog { color 0.5 0.5 1e999 visibilityRange 100 fogType "EXPONENTIAL" }
+Background { skyColor [ 0 0 1e999, 1 1 1 ] skyAngle 1e999 groundColor 0.1 0.2 -1e999 }
+NavigationInfo { avatarSize [ 0.25 1.6 1e999 ] speed 1e999 }
+DEF Entry Viewpoint { position 0 0 1e999 description "Entrance" }

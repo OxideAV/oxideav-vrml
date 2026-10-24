@@ -16,9 +16,9 @@
 use std::collections::HashMap;
 
 use crate::ast::{
-    AccessType, Document, ExternProtoDecl, ExternProtoId, Field, FieldBinding, FieldData,
-    FieldType, FieldValue, Header, Image, InterfaceDecl, Node, NodeId, NodeOrigin, ProtoDecl,
-    ProtoId, Route, Scalar, Statement,
+    AccessType, BodyElement, Document, ExternProtoDecl, ExternProtoId, Field, FieldBinding,
+    FieldData, FieldType, FieldValue, Header, Image, InterfaceDecl, Node, NodeId, NodeOrigin,
+    ProtoDecl, ProtoId, Route, Scalar, Statement,
 };
 use crate::error::{Error, Result};
 use crate::syntax::catalog::{NodeCatalog, Vrml97Catalog};
@@ -613,26 +613,34 @@ impl<'a, 'c> Parser<'a, 'c> {
             if self.tok.kind != TokenKind::Id {
                 return Err(self.err_here("expected a field name or `}`"));
             }
+            // Record the interleaving: field typing depends on which
+            // declarations / PROTOs precede a field, so the writer has
+            // to reproduce this order (see `Node::body_order`).
             match self.tok.text {
                 "ROUTE" => {
                     let r = self.parse_route()?;
                     node.statements.push(Statement::Route(r));
+                    node.body_order.push(BodyElement::Statement);
                 }
                 "PROTO" => {
                     let p = self.parse_proto()?;
                     node.statements.push(Statement::Proto(p));
+                    node.body_order.push(BodyElement::Statement);
                 }
                 "EXTERNPROTO" => {
                     let p = self.parse_externproto()?;
                     node.statements.push(Statement::ExternProto(p));
+                    node.body_order.push(BodyElement::Statement);
                 }
                 w if self.access_keyword(w).is_some() => {
                     let d = self.parse_interface_decl(true, true)?;
                     node.interface.push(d);
+                    node.body_order.push(BodyElement::Interface);
                 }
                 _ => {
                     let f = self.parse_field(&node)?;
                     node.fields.push(f);
+                    node.body_order.push(BodyElement::Field);
                 }
             }
         }

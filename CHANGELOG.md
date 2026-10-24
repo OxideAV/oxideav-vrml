@@ -4,9 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- `write(parse(text))` was not a fixed point when a node body
+  interleaved field statements with Script-style interface declarations
+  or nested `PROTO` statements: the writer emitted declarations first,
+  so a field the parser had typed by shape (`J 2` before
+  `eventIn MFVec2d J`) re-parsed under the declared type and failed
+  (scheduled Fuzz, `syntax_roundtrip`, 2026-10-18 .. 2026-10-24). The
+  AST now records the body interleaving (`Node::body_order`,
+  `ast::BodyElement`), the parser fills it, PROTO expansion carries it,
+  and the writer follows it (ISO/IEC 14772-1 Annex A
+  `scriptBodyElement`, §4.8.4). Regression tests in `tests/hostile.rs`.
+- Encoder output did not re-decode when a preserved environment node
+  (Fog / Background / NavigationInfo / WorldInfo) carried a non-finite
+  component (`1e999` → +inf): the extras JSON rendered it as `null`,
+  the encoder dropped it and wrote an incomplete `color`. Non-finite
+  numbers are now exported as `0` (the writer's convention), JSON
+  re-import keeps component positions and lets a short single value
+  fall back to the schema default, and the writer pads / truncates
+  single-valued fields so programmatically built values always parse.
+
 ### Changed
 
 - edition 2024, MSRV 1.95
+- `ast::Node` is `#[non_exhaustive]` (construct it with `Node::new`).
 
 ## [0.0.1](https://github.com/OxideAV/oxideav-vrml/compare/v0.0.0...v0.0.1) - 2026-10-04
 

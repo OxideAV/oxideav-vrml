@@ -25,8 +25,8 @@
 use std::collections::HashMap;
 
 use crate::ast::{
-    Document, ExternProtoId, Field, FieldBinding, FieldData, FieldValue, InterfaceDecl, Node,
-    NodeId, NodeOrigin, ProtoId, ProtoInstance, Route, Statement,
+    BodyElement, Document, ExternProtoId, Field, FieldBinding, FieldData, FieldValue,
+    InterfaceDecl, Node, NodeId, NodeOrigin, ProtoId, ProtoInstance, Route, Statement,
 };
 use crate::error::{Error, Result};
 
@@ -273,7 +273,12 @@ impl<'a> Expander<'a> {
             NodeOrigin::ExternProto(eid) => NodeOrigin::ExternProto(self.extern_proto(eid, env)?),
             other => other,
         };
+        // Which source fields / statements survive the copy, so the
+        // source body order can be carried over minus the dropped ones.
+        let mut kept_fields = Vec::with_capacity(node.fields.len());
+        let mut kept_statements = Vec::with_capacity(node.statements.len());
         for f in &node.fields {
+            let before = out.fields.len();
             match &f.binding {
                 FieldBinding::Value(v) => {
                     out.fields.push(Field {
@@ -297,6 +302,7 @@ impl<'a> Expander<'a> {
                     }
                 }
             }
+            kept_fields.push(out.fields.len() > before);
         }
         for d in &node.interface {
             let mut nd = InterfaceDecl {
@@ -319,12 +325,32 @@ impl<'a> Expander<'a> {
             out.interface.push(nd);
         }
         for s in &node.statements {
+            let before = out.statements.len();
             match s {
                 Statement::Route(r) => out.statements.push(Statement::Route(remap_route(r, env))),
                 Statement::ExternProto(eid) => out
                     .statements
                     .push(Statement::ExternProto(self.extern_proto(*eid, env)?)),
                 _ => {}
+            }
+            kept_statements.push(out.statements.len() > before);
+        }
+        // Source interleaving minus the elements dropped above.
+        let (mut fi, mut si) = (0, 0);
+        for element in &node.body_order {
+            let keep = match element {
+                BodyElement::Field => {
+                    fi += 1;
+                    kept_fields.get(fi - 1).copied().unwrap_or(false)
+                }
+                BodyElement::Statement => {
+                    si += 1;
+                    kept_statements.get(si - 1).copied().unwrap_or(false)
+                }
+                BodyElement::Interface => true,
+            };
+            if keep {
+                out.body_order.push(*element);
             }
         }
         self.out.nodes[new.0 as usize] = out;

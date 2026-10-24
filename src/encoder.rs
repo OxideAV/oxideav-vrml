@@ -1289,18 +1289,23 @@ impl<'s> Enc<'s> {
         let mut flat = Vec::new();
         flatten(v, &mut flat);
         let mut out = FieldValue::empty(ty);
+        // Numeric entries that are not numbers (`null` from a non-finite
+        // float, a stray string) read as 0 / FALSE so the components
+        // after them keep their positions.
         match (&mut out.data, ty.element().0) {
             (FieldData::Bools(d), Scalar::Bool) => {
-                d.extend(flat.iter().filter_map(|x| x.as_bool()))
+                d.extend(flat.iter().map(|x| x.as_bool().unwrap_or(false)))
             }
-            (FieldData::Int32s(d), Scalar::Int32) => {
-                d.extend(flat.iter().filter_map(|x| x.as_i64()).map(|x| x as i32))
-            }
+            (FieldData::Int32s(d), Scalar::Int32) => d.extend(flat.iter().map(|x| {
+                x.as_i64()
+                    .unwrap_or(0)
+                    .clamp(i32::MIN as i64, i32::MAX as i64) as i32
+            })),
             (FieldData::Floats(d), Scalar::Float) => {
-                d.extend(flat.iter().filter_map(|x| x.as_f64()).map(|x| x as f32))
+                d.extend(flat.iter().map(|x| x.as_f64().unwrap_or(0.0) as f32))
             }
             (FieldData::Doubles(d), Scalar::Double) => {
-                d.extend(flat.iter().filter_map(|x| x.as_f64()))
+                d.extend(flat.iter().map(|x| x.as_f64().unwrap_or(0.0)))
             }
             (FieldData::Strings(d), Scalar::String) => {
                 d.extend(flat.iter().filter_map(|x| x.as_str()).map(str::to_owned))
@@ -1321,8 +1326,25 @@ impl<'s> Enc<'s> {
             _ => return None,
         }
         let comps = ty.element().1.max(1);
-        if let FieldData::Floats(f) = &mut out.data {
-            f.truncate(f.len() / comps * comps);
+        let len = match &mut out.data {
+            FieldData::Floats(f) => {
+                f.truncate(f.len() / comps * comps);
+                f.len()
+            }
+            FieldData::Doubles(f) => {
+                f.truncate(f.len() / comps * comps);
+                f.len()
+            }
+            FieldData::Int32s(x) => x.len(),
+            FieldData::Bools(x) => x.len(),
+            FieldData::Strings(x) => x.len(),
+            FieldData::Images(x) => x.len(),
+            FieldData::Nodes(x) => x.len(),
+        };
+        // A single-valued field needs exactly one element; with fewer
+        // (a missing component) the schema default stands instead.
+        if !ty.is_multi() && len < comps {
+            return None;
         }
         Some(out)
     }

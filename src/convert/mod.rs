@@ -1263,6 +1263,14 @@ pub(crate) fn node_json(doc: &Document, id: NodeId, depth: usize) -> Value {
     Value::Object(out)
 }
 
+fn finite_or_zero(x: f32) -> f32 {
+    if x.is_finite() { x } else { 0.0 }
+}
+
+fn finite_or_zero64(x: f64) -> f64 {
+    if x.is_finite() { x } else { 0.0 }
+}
+
 fn value_json(doc: &Document, v: &FieldValue, depth: usize) -> Value {
     let multi = v.ty.is_multi();
     let comps = v.ty.element().1.max(1);
@@ -1288,8 +1296,11 @@ fn value_json(doc: &Document, v: &FieldValue, depth: usize) -> Value {
     match &v.data {
         FieldData::Bools(b) => group(b.iter().map(|x| json!(x)).collect()),
         FieldData::Int32s(i) => group(i.iter().map(|x| json!(x)).collect()),
-        FieldData::Floats(f) => group(f.iter().map(|x| json!(x)).collect()),
-        FieldData::Doubles(d) => group(d.iter().map(|x| json!(x)).collect()),
+        // serde_json renders non-finite numbers as `null`, which would
+        // drop the component on re-import; VRML cannot express them
+        // either, so write `0` like the text writer does.
+        FieldData::Floats(f) => group(f.iter().map(|x| json!(finite_or_zero(*x))).collect()),
+        FieldData::Doubles(d) => group(d.iter().map(|x| json!(finite_or_zero64(*x))).collect()),
         FieldData::Strings(s) => group(s.iter().map(|x| json!(x)).collect()),
         FieldData::Images(imgs) => group(
             imgs.iter()
