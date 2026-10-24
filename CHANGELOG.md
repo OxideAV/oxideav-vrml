@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.2](https://github.com/OxideAV/oxideav-vrml/compare/v0.0.1...v0.0.2) - 2026-10-24
+
+### Fixed
+
+- write/parse fixed point for interleaved node bodies; non-finite extras re-encode
+
+### Other
+
+- edition 2024, MSRV 1.95
+
 ### Fixed
 
 - `write(parse(text))` was not a fixed point when a node body
