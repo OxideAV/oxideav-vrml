@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.3](https://github.com/OxideAV/oxideav-vrml/compare/v0.0.2...v0.0.3) - 2026-11-07
+
+### Other
+
+- API hygiene: non_exhaustive option records, Document and growable enums
+
 ### Changed
 
 - `#[non_exhaustive]`: the enums `Error`, `ast::NodeOrigin`, `TextureEmbedding`, `syntax::Dialect` and `syntax::TokenKind`; the records `EncodeOptions`, `ExpandLimits`, `ConvertOptions`, `Tessellation`, `ast::Document`, `ast::ProtoInstance` and `syntax::Token`. Code outside the crate builds the option records with `Default` plus the `with_*` setters (and `Document` with `Document::new`) and needs a `_ =>` arm when matching the enums. `ParseOptions`, `ParseLimits`, `WriteOptions`, `FieldData`, `FieldBinding` and the AST declaration records stay exhaustive for now because a sibling crate still builds / matches them directly; `AccessType`, `Scalar` and `BodyElement` (fixed by the grammar) and the `Image` value type are unchanged.
