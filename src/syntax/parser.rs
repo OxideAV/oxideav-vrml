@@ -28,6 +28,7 @@ use crate::syntax::lexer::{
 
 /// Grammar dialect.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Dialect {
     /// ISO/IEC 14772-1 (VRML97) UTF-8 encoding.
     #[default]
@@ -52,6 +53,38 @@ pub struct ParseLimits {
     pub max_field_elements: usize,
     /// Maximum `width × height` of one SFImage.
     pub max_image_pixels: u64,
+}
+
+impl ParseLimits {
+    /// Set `max_depth`.
+    pub fn with_max_depth(mut self, max_depth: usize) -> Self {
+        self.max_depth = max_depth;
+        self
+    }
+
+    /// Set `max_nodes`.
+    pub fn with_max_nodes(mut self, max_nodes: usize) -> Self {
+        self.max_nodes = max_nodes;
+        self
+    }
+
+    /// Set `max_protos`.
+    pub fn with_max_protos(mut self, max_protos: usize) -> Self {
+        self.max_protos = max_protos;
+        self
+    }
+
+    /// Set `max_field_elements`.
+    pub fn with_max_field_elements(mut self, max_field_elements: usize) -> Self {
+        self.max_field_elements = max_field_elements;
+        self
+    }
+
+    /// Set `max_image_pixels`.
+    pub fn with_max_image_pixels(mut self, max_image_pixels: u64) -> Self {
+        self.max_image_pixels = max_image_pixels;
+        self
+    }
 }
 
 impl Default for ParseLimits {
@@ -79,6 +112,32 @@ pub struct ParseOptions<'c> {
     /// line. When `false` a missing header is tolerated (useful for
     /// parsing fragments such as `createVrmlFromString` input).
     pub require_header: bool,
+}
+
+impl<'c> ParseOptions<'c> {
+    /// Set `dialect`.
+    pub fn with_dialect(mut self, dialect: Dialect) -> Self {
+        self.dialect = dialect;
+        self
+    }
+
+    /// Set `limits`.
+    pub fn with_limits(mut self, limits: ParseLimits) -> Self {
+        self.limits = limits;
+        self
+    }
+
+    /// Set `catalog`.
+    pub fn with_catalog(mut self, catalog: &'c dyn NodeCatalog) -> Self {
+        self.catalog = catalog;
+        self
+    }
+
+    /// Set `require_header`.
+    pub fn with_require_header(mut self, require_header: bool) -> Self {
+        self.require_header = require_header;
+        self
+    }
 }
 
 impl std::fmt::Debug for ParseOptions<'_> {

@@ -18,21 +18,19 @@ fuzz_target!(|data: &[u8]| {
             max_field_elements: 1 << 20,
             max_image_pixels: 1 << 16,
         })
-        .with_expand_limits(ExpandLimits {
-            max_nodes: 50_000,
-            max_depth: 64,
-        })
-        .with_options(ConvertOptions {
-            tessellation: Tessellation {
-                slices: 8,
-                stacks: 4,
-            },
-            max_scene_nodes: 20_000,
-            max_generated: 200_000,
-            all_switch_choices: true,
-            all_lod_levels: true,
-            ..ConvertOptions::default()
-        });
+        .with_expand_limits(
+            ExpandLimits::default()
+                .with_max_nodes(50_000)
+                .with_max_depth(64),
+        )
+        .with_options(
+            ConvertOptions::default()
+                .with_tessellation(Tessellation::default().with_slices(8).with_stacks(4))
+                .with_max_scene_nodes(20_000)
+                .with_max_generated(200_000)
+                .with_all_switch_choices(true)
+                .with_all_lod_levels(true),
+        );
     let Ok(scene) = decoder.decode_scene(data) else {
         return;
     };

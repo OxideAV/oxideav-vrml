@@ -714,6 +714,7 @@ impl Field {
 
 /// Where a node's type comes from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum NodeOrigin {
     /// A type listed in the parser's [`NodeCatalog`](crate::syntax::NodeCatalog)
     /// (the 54 standard VRML97 nodes by default).
@@ -730,6 +731,7 @@ pub enum NodeOrigin {
 /// Bookkeeping attached to the root node of an expanded prototype
 /// instance by [`expand_protos`](crate::syntax::expand_protos).
 #[derive(Clone, Debug, Default, PartialEq)]
+#[non_exhaustive]
 pub struct ProtoInstance {
     /// Name of the instantiated prototype.
     pub proto_name: String,
@@ -1036,6 +1038,7 @@ impl Header {
 
 /// A parsed VRML file.
 #[derive(Clone, Debug, Default, PartialEq)]
+#[non_exhaustive]
 pub struct Document {
     /// Header line.
     pub header: Header,

@@ -19,6 +19,7 @@ use crate::error::{Error, Result};
 
 /// Token category.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TokenKind {
     /// Identifier or keyword.
     Id,
@@ -44,6 +45,7 @@ pub enum TokenKind {
 
 /// One token with its source position.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Token<'a> {
     /// Category.
     pub kind: TokenKind,

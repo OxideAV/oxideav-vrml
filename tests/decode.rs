@@ -447,12 +447,10 @@ fn grouping_nodes() {
     assert!(s.extras.contains_key("vrml:unsupportedGeometry"));
 
     // All choices / levels on request; Inline followed by a resolver.
-    let opts = ConvertOptions {
-        all_switch_choices: true,
-        all_lod_levels: true,
-        resolver: Some(Arc::new(MapResolver)),
-        ..ConvertOptions::default()
-    };
+    let opts = ConvertOptions::default()
+        .with_all_switch_choices(true)
+        .with_all_lod_levels(true)
+        .with_resolver(Some(Arc::new(MapResolver)));
     let s2 = VrmlDecoder::new()
         .with_options(opts)
         .decode_scene(&fixture("grouping.wrl"))

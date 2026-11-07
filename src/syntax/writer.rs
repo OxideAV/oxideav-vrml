@@ -36,6 +36,26 @@ pub struct WriteOptions {
     pub elements_per_line: usize,
 }
 
+impl WriteOptions {
+    /// Set `dialect`.
+    pub fn with_dialect(mut self, dialect: Dialect) -> Self {
+        self.dialect = dialect;
+        self
+    }
+
+    /// Set `indent`.
+    pub fn with_indent(mut self, indent: usize) -> Self {
+        self.indent = indent;
+        self
+    }
+
+    /// Set `elements_per_line`.
+    pub fn with_elements_per_line(mut self, elements_per_line: usize) -> Self {
+        self.elements_per_line = elements_per_line;
+        self
+    }
+}
+
 impl Default for WriteOptions {
     fn default() -> Self {
         Self {

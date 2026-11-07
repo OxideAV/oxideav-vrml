@@ -12,6 +12,7 @@ use std::fmt;
 
 /// Errors produced while reading or writing VRML.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Error {
     /// Lexical or syntactic violation of the ISO/IEC 14772-1 Annex A
     /// grammar. `line` / `column` are 1-based and point at the

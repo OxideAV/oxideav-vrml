@@ -32,11 +32,26 @@ use crate::error::{Error, Result};
 
 /// Caps for [`expand_protos`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ExpandLimits {
     /// Maximum nodes in the expanded document.
     pub max_nodes: usize,
     /// Maximum nesting of prototype instantiation / node copying.
     pub max_depth: usize,
+}
+
+impl ExpandLimits {
+    /// Set `max_nodes`.
+    pub fn with_max_nodes(mut self, max_nodes: usize) -> Self {
+        self.max_nodes = max_nodes;
+        self
+    }
+
+    /// Set `max_depth`.
+    pub fn with_max_depth(mut self, max_depth: usize) -> Self {
+        self.max_depth = max_depth;
+        self
+    }
 }
 
 impl Default for ExpandLimits {

@@ -245,10 +245,7 @@ fn extrusion_product_is_capped() {
         s.push_str(&format!("{i} 0, "));
     }
     s.push_str("] } }");
-    let opts = ConvertOptions {
-        max_generated: 10_000,
-        ..ConvertOptions::default()
-    };
+    let opts = ConvertOptions::default().with_max_generated(10_000);
     let scene = VrmlDecoder::new()
         .with_options(opts)
         .decode_scene(s.as_bytes())

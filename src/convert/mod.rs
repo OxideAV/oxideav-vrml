@@ -59,6 +59,7 @@ pub trait UrlResolver: Send + Sync {
 
 /// Scene-conversion options.
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct ConvertOptions {
     /// Tessellation density for Sphere / Cone / Cylinder.
     pub tessellation: Tessellation,
@@ -77,6 +78,50 @@ pub struct ConvertOptions {
     pub resolver: Option<Arc<dyn UrlResolver>>,
     /// Maximum `Inline` nesting followed through the resolver.
     pub max_inline_depth: usize,
+}
+
+impl ConvertOptions {
+    /// Set `tessellation`.
+    pub fn with_tessellation(mut self, tessellation: Tessellation) -> Self {
+        self.tessellation = tessellation;
+        self
+    }
+
+    /// Set `all_switch_choices`.
+    pub fn with_all_switch_choices(mut self, all_switch_choices: bool) -> Self {
+        self.all_switch_choices = all_switch_choices;
+        self
+    }
+
+    /// Set `all_lod_levels`.
+    pub fn with_all_lod_levels(mut self, all_lod_levels: bool) -> Self {
+        self.all_lod_levels = all_lod_levels;
+        self
+    }
+
+    /// Set `max_scene_nodes`.
+    pub fn with_max_scene_nodes(mut self, max_scene_nodes: usize) -> Self {
+        self.max_scene_nodes = max_scene_nodes;
+        self
+    }
+
+    /// Set `max_generated`.
+    pub fn with_max_generated(mut self, max_generated: usize) -> Self {
+        self.max_generated = max_generated;
+        self
+    }
+
+    /// Set `resolver`.
+    pub fn with_resolver(mut self, resolver: Option<Arc<dyn UrlResolver>>) -> Self {
+        self.resolver = resolver;
+        self
+    }
+
+    /// Set `max_inline_depth`.
+    pub fn with_max_inline_depth(mut self, max_inline_depth: usize) -> Self {
+        self.max_inline_depth = max_inline_depth;
+        self
+    }
 }
 
 impl fmt::Debug for ConvertOptions {

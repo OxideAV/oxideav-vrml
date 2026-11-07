@@ -40,10 +40,9 @@ fuzz_target!(|data: &[u8]| {
         assert_eq!(written, rewritten, "write/parse is not a fixed point");
         let _ = expand_protos_with(
             &doc,
-            &ExpandLimits {
-                max_nodes: 50_000,
-                max_depth: 64,
-            },
+            &ExpandLimits::default()
+                .with_max_nodes(50_000)
+                .with_max_depth(64),
         );
     }
 });

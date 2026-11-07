@@ -19,11 +19,26 @@ pub(crate) const MAX_GENERATED: usize = 16 * 1024 * 1024;
 
 /// Tessellation density for the analytic primitives.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Tessellation {
     /// Segments around the Y axis (Sphere / Cone / Cylinder).
     pub slices: u32,
     /// Latitude bands of a Sphere.
     pub stacks: u32,
+}
+
+impl Tessellation {
+    /// Set `slices`.
+    pub fn with_slices(mut self, slices: u32) -> Self {
+        self.slices = slices;
+        self
+    }
+
+    /// Set `stacks`.
+    pub fn with_stacks(mut self, stacks: u32) -> Self {
+        self.stacks = stacks;
+        self
+    }
 }
 
 impl Default for Tessellation {

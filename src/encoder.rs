@@ -46,6 +46,7 @@ use crate::syntax::{WriteOptions, write_document_with};
 
 /// How embedded (non-URI) textures are written.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TextureEmbedding {
     /// PNG payloads become `PixelTexture` (standard VRML97); other
     /// formats an `ImageTexture` with a `data:` URI.
@@ -61,6 +62,7 @@ pub enum TextureEmbedding {
 
 /// Encoder options.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct EncodeOptions {
     /// Embedded-texture policy.
     pub textures: TextureEmbedding,
@@ -70,6 +72,32 @@ pub struct EncodeOptions {
     pub header_comment: String,
     /// Writer formatting.
     pub write: WriteOptions,
+}
+
+impl EncodeOptions {
+    /// Set `textures`.
+    pub fn with_textures(mut self, textures: TextureEmbedding) -> Self {
+        self.textures = textures;
+        self
+    }
+
+    /// Set `gzip`.
+    pub fn with_gzip(mut self, gzip: bool) -> Self {
+        self.gzip = gzip;
+        self
+    }
+
+    /// Set `header_comment`.
+    pub fn with_header_comment(mut self, header_comment: String) -> Self {
+        self.header_comment = header_comment;
+        self
+    }
+
+    /// Set `write`.
+    pub fn with_write(mut self, write: WriteOptions) -> Self {
+        self.write = write;
+        self
+    }
 }
 
 impl Default for EncodeOptions {
